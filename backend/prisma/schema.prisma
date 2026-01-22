@@ -1,0 +1,146 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Usuario para autenticación privada
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  repos     Repository[]
+  folders   Folder[]
+  projects  Project[]
+}
+
+// Repositorios Git
+model Repository {
+  id          String   @id @default(uuid())
+  name        String
+  url         String
+  deployUrl   String?  // URL de la página desplegada (solo si está activo)
+  description String?
+  technology  String?
+  tags        String[] // Array de tags
+  status      String   @default("activo") // activo, archivado, programando
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId   String
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects ProjectRepository[]
+
+  @@index([userId])
+  @@index([tags])
+}
+
+// Carpetas para organizar recursos de IA
+model Folder {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  parentId    String?  // Para jerarquía de carpetas
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId   String
+  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent   Folder?      @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children Folder[]     @relation("FolderHierarchy")
+  aiResources AIResource[]
+
+  @@index([userId])
+  @@index([parentId])
+}
+
+// Recursos de IA
+model AIResource {
+  id          String   @id @default(uuid())
+  name        String
+  url         String
+  type        String   // web, local, api
+  description String?
+  tags        String[] // Array de tags
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  folderId String?
+  folder   Folder?          @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  projects ProjectAIResource[]
+
+  @@index([folderId])
+  @@index([tags])
+  @@index([type])
+}
+
+// Proyectos (grupos de recursos)
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  notes       String?  // Markdown
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId      String
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repos       ProjectRepository[]
+  aiResources ProjectAIResource[]
+  links       ProjectLink[]
+
+  @@index([userId])
+}
+
+// Relación muchos a muchos: Proyecto <-> Repositorio
+model ProjectRepository {
+  id        String   @id @default(uuid())
+  projectId String
+  repoId    String
+  createdAt DateTime @default(now())
+
+  project    Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  repository Repository @relation(fields: [repoId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, repoId])
+  @@index([projectId])
+  @@index([repoId])
+}
+
+// Relación muchos a muchos: Proyecto <-> Recurso IA
+model ProjectAIResource {
+  id           String   @id @default(uuid())
+  projectId    String
+  aiResourceId String
+  createdAt    DateTime @default(now())
+
+  project    Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  aiResource AIResource @relation(fields: [aiResourceId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, aiResourceId])
+  @@index([projectId])
+  @@index([aiResourceId])
+}
+
+// Enlaces adicionales en proyectos
+model ProjectLink {
+  id        String   @id @default(uuid())
+  projectId String
+  title     String
+  url       String
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
