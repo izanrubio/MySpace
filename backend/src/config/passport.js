@@ -1,0 +1,74 @@
+import passport from 'passport';
+import { Strategy as GitHubStrategy } from 'passport-github2';
+import prisma from './database.js';
+
+passport.use(
+    new GitHubStrategy(
+        {
+            clientID: process.env.GITHUB_CLIENT_ID,
+            clientSecret: process.env.GITHUB_CLIENT_SECRET,
+            callbackURL: process.env.GITHUB_CALLBACK_URL || 'http://localhost:3000/api/auth/github/callback',
+        },
+        async (accessToken, refreshToken, profile, done) => {
+            try {
+                // Buscar usuario existente por GitHub ID
+                let user = await prisma.user.findUnique({
+                    where: { githubId: profile.id },
+                });
+
+                if (!user) {
+                    // Si no existe, buscar por email
+                    const email = profile.emails?.[0]?.value;
+
+                    if (email) {
+                        user = await prisma.user.findUnique({
+                            where: { email },
+                        });
+                    }
+
+                    if (user) {
+                        // Usuario existe con ese email, vincular cuenta de GitHub
+                        user = await prisma.user.update({
+                            where: { id: user.id },
+                            data: {
+                                githubId: profile.id,
+                                githubUsername: profile.username,
+                                avatarUrl: profile.photos?.[0]?.value,
+                            },
+                        });
+                    } else {
+                        // Crear nuevo usuario
+                        user = await prisma.user.create({
+                            data: {
+                                email: email || `${profile.username}@github.user`,
+                                name: profile.displayName || profile.username,
+                                githubId: profile.id,
+                                githubUsername: profile.username,
+                                avatarUrl: profile.photos?.[0]?.value,
+                            },
+                        });
+                    }
+                }
+
+                return done(null, user);
+            } catch (error) {
+                return done(error, null);
+            }
+        }
+    )
+);
+
+passport.serializeUser((user, done) => {
+    done(null, user.id);
+});
+
+passport.deserializeUser(async (id, done) => {
+    try {
+        const user = await prisma.user.findUnique({ where: { id } });
+        done(null, user);
+    } catch (error) {
+        done(error, null);
+    }
+});
+
+export default passport;

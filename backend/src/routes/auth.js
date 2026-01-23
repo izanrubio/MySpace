@@ -109,4 +109,51 @@ router.get('/me', async (req, res) => {
   }
 });
 
+// GitHub OAuth - Iniciar autenticación
+router.get('/github', (req, res, next) => {
+  console.log('🔍 GitHub OAuth initiated');
+  console.log('Query params:', req.query);
+  console.log('Full URL:', req.url);
+
+  // Guardar la URL de retorno si se proporciona
+  if (req.query.returnUrl) {
+    console.log('Return URL:', req.query.returnUrl);
+    req.session.returnUrl = req.query.returnUrl;
+  }
+  next();
+}, (req, res, next) => {
+  const passport = req.app.get('passport');
+  passport.authenticate('github', { scope: ['user:email'] })(req, res, next);
+});
+
+// GitHub OAuth - Callback
+router.get('/github/callback', (req, res, next) => {
+  console.log('🔍 GitHub callback received');
+  console.log('Query params:', req.query);
+  console.log('Full URL:', req.url);
+
+  const passport = req.app.get('passport');
+  passport.authenticate('github', { failureRedirect: '/login' }, async (err, user) => {
+    if (err || !user) {
+      console.error('❌ GitHub auth error:', err);
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=github_auth_failed`);
+    }
+
+    console.log('✅ User authenticated:', user.email);
+
+    // Generate JWT token
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRES_IN,
+    });
+
+    // Redirect to frontend with token
+    const returnUrl = req.session?.returnUrl || process.env.FRONTEND_URL;
+    delete req.session?.returnUrl;
+
+    console.log('🔄 Redirecting to:', `${process.env.FRONTEND_URL}/auth/callback?token=${token.substring(0, 20)}...`);
+    res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`);
+  })(req, res, next);
+});
+
 export default router;
+

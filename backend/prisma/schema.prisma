@@ -12,16 +12,19 @@ datasource db {
 
 // Usuario para autenticación privada
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(uuid())
+  email          String   @unique
+  password       String? // Opcional para usuarios OAuth
+  name           String
+  githubId       String?  @unique // ID de GitHub para OAuth
+  githubUsername String? // Username de GitHub
+  avatarUrl      String? // URL del avatar
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  repos     Repository[]
-  folders   Folder[]
-  projects  Project[]
+  repos    Repository[]
+  folders  Folder[]
+  projects Project[]
 }
 
 // Repositorios Git
@@ -29,7 +32,7 @@ model Repository {
   id          String   @id @default(uuid())
   name        String
   url         String
-  deployUrl   String?  // URL de la página desplegada (solo si está activo)
+  deployUrl   String? // URL de la página desplegada (solo si está activo)
   description String?
   technology  String?
   tags        String[] // Array de tags
@@ -38,7 +41,7 @@ model Repository {
   updatedAt   DateTime @updatedAt
 
   userId   String
-  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   projects ProjectRepository[]
 
   @@index([userId])
@@ -50,14 +53,14 @@ model Folder {
   id          String   @id @default(uuid())
   name        String
   description String?
-  parentId    String?  // Para jerarquía de carpetas
+  parentId    String? // Para jerarquía de carpetas
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  userId   String
-  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parent   Folder?      @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
-  children Folder[]     @relation("FolderHierarchy")
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent      Folder?      @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    Folder[]     @relation("FolderHierarchy")
   aiResources AIResource[]
 
   @@index([userId])
@@ -69,14 +72,14 @@ model AIResource {
   id          String   @id @default(uuid())
   name        String
   url         String
-  type        String   // web, local, api
+  type        String // web, local, api
   description String?
   tags        String[] // Array de tags
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   folderId String?
-  folder   Folder?          @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  folder   Folder?             @relation(fields: [folderId], references: [id], onDelete: SetNull)
   projects ProjectAIResource[]
 
   @@index([folderId])
@@ -89,7 +92,7 @@ model Project {
   id          String   @id @default(uuid())
   name        String
   description String?
-  notes       String?  // Markdown
+  notes       String? // Markdown
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
