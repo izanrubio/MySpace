@@ -95,6 +95,8 @@ router.get('/me', async (req, res) => {
         id: true,
         email: true,
         name: true,
+        githubUsername: true,
+        avatarUrl: true,
         createdAt: true,
       },
     });

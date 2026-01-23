@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
-import { FiSearch, FiPlus } from 'react-icons/fi';
+import { FiSearch, FiLogOut, FiUser, FiGithub } from 'react-icons/fi';
+import { useAuth } from '../context/AuthContext';
 import { search } from '../services/api';
 
 export default function Header() {
+  const { user, logout } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
   const [showResults, setShowResults] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   useEffect(() => {
     if (searchQuery.length > 2) {
@@ -18,6 +21,17 @@ export default function Header() {
       setShowResults(false);
     }
   }, [searchQuery]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showUserMenu && !event.target.closest('.user-menu-container')) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showUserMenu]);
 
   const performSearch = async () => {
     try {
@@ -116,12 +130,47 @@ export default function Header() {
         )}
       </div>
 
-      {/* Right Side Actions */}
+      {/* Right Side - User Info */}
       <div className="flex items-center gap-4">
-        <button className="bg-primary-600 hover:bg-primary-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors">
-          <FiPlus size={16} />
-          <span>Add Repo</span>
-        </button>
+        {/* Connected Account Badge */}
+        {user?.githubUsername && (
+          <a
+            href={`https://github.com/${user.githubUsername}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-3 py-1.5 bg-gray-700/50 border border-gray-600 rounded-lg hover:bg-gray-700 hover:border-primary-500 transition-colors cursor-pointer"
+          >
+            <FiGithub className="text-gray-400" size={16} />
+            <span className="text-xs text-gray-400">Connected as</span>
+            <span className="text-sm text-white font-medium hover:text-primary-400 transition-colors">@{user.githubUsername}</span>
+          </a>
+        )}
+
+        {/* User Menu */}
+        <div className="relative user-menu-container">
+          <button
+            onClick={() => setShowUserMenu(!showUserMenu)}
+            className="flex items-center gap-2 px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+          >
+            <FiUser size={16} className="text-gray-300" />
+            <span className="text-sm text-white">{user?.name || user?.email}</span>
+          </button>
+
+          {showUserMenu && (
+            <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50">
+              <button
+                onClick={() => {
+                  setShowUserMenu(false);
+                  logout();
+                }}
+                className="w-full flex items-center gap-2 px-4 py-3 text-left text-red-400 hover:bg-gray-700 transition-colors"
+              >
+                <FiLogOut size={16} />
+                <span>Cerrar sesión</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
