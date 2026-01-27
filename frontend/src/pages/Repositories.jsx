@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  FiPlus, FiEdit2, FiTrash2, FiExternalLink, FiFileText, FiZap, FiCode
+  FiPlus, FiEdit2, FiTrash2, FiExternalLink, FiFileText, FiZap, FiCode, FiGitBranch
 } from 'react-icons/fi';
 import { repositories } from '../services/api';
 import Modal from '../components/Modal';
@@ -164,6 +164,38 @@ export default function Repositories() {
     return <FiZap className="text-lg" />;
   };
 
+  const showCloneInfo = (repo) => {
+    // Generate clone URLs from repository URL
+    const generateCloneUrls = (url) => {
+      // Check if it's a GitHub URL
+      if (url.includes('github.com')) {
+        // Extract owner and repo name from URL
+        const match = url.match(/github\.com\/([^\/]+)\/([^\/\.]+)/);
+        if (match) {
+          const [, owner, repoName] = match;
+          return {
+            https: `https://github.com/${owner}/${repoName}.git`,
+            ssh: `git@github.com:${owner}/${repoName}.git`,
+          };
+        }
+      }
+      // For non-GitHub repos, try to generate generic URLs
+      return {
+        https: url.endsWith('.git') ? url : `${url}.git`,
+        ssh: url.replace('https://', 'git@').replace('/', ':') + (url.endsWith('.git') ? '' : '.git'),
+      };
+    };
+
+    const cloneUrls = generateCloneUrls(repo.url);
+    setCloneInfo({
+      name: repo.name,
+      description: repo.description,
+      cloneUrls,
+      githubUrl: repo.url,
+    });
+    setShowCloneInfoModal(true);
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
@@ -294,6 +326,13 @@ export default function Repositories() {
                         <FiExternalLink size={16} />
                       </a>
                     )}
+                    <button
+                      onClick={() => showCloneInfo(repo)}
+                      className="p-2 text-purple-400 hover:text-purple-300 hover:bg-gray-700 rounded-lg transition-colors"
+                      title="Clone info"
+                    >
+                      <FiGitBranch size={16} />
+                    </button>
                     <a
                       href={repo.url}
                       target="_blank"
