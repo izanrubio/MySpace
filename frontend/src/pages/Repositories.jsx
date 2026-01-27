@@ -9,6 +9,9 @@ export default function Repositories() {
   const [repos, setRepos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showGitHubModal, setShowGitHubModal] = useState(false);
+  const [showCloneInfoModal, setShowCloneInfoModal] = useState(false);
+  const [cloneInfo, setCloneInfo] = useState(null);
   const [editingRepo, setEditingRepo] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
   const [formData, setFormData] = useState({
@@ -19,6 +22,12 @@ export default function Repositories() {
     technology: '',
     tags: '',
     status: 'activo',
+  });
+  const [githubFormData, setGithubFormData] = useState({
+    name: '',
+    description: '',
+    isPrivate: true,
+    autoInit: true,
   });
 
   useEffect(() => {
@@ -54,6 +63,42 @@ export default function Repositories() {
       closeModal();
     } catch (error) {
       console.error('Error saving repo:', error);
+    }
+  };
+
+  const handleGitHubSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await repositories.createGitHub(githubFormData);
+
+      // Show clone info modal
+      setCloneInfo(response.data);
+      setShowGitHubModal(false);
+      setShowCloneInfoModal(true);
+
+      // Reset form
+      setGithubFormData({
+        name: '',
+        description: '',
+        isPrivate: true,
+        autoInit: true,
+      });
+
+      // Reload repositories
+      loadRepos();
+    } catch (error) {
+      console.error('Error creating GitHub repo:', error);
+      const errorMessage = error.response?.data?.error || 'Error creating GitHub repository';
+
+      // Check if it's an authentication error
+      if (error.response?.status === 400 || error.response?.status === 401) {
+        if (confirm(`${errorMessage}\n\n¿Quieres reconectar tu cuenta de GitHub para obtener los permisos necesarios?`)) {
+          // Redirect to GitHub OAuth
+          window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/auth/github`;
+        }
+      } else {
+        alert(errorMessage);
+      }
     }
   };
 
@@ -127,13 +172,22 @@ export default function Repositories() {
           <h1 className="text-4xl font-bold text-white mb-2">Repositories</h1>
           <p className="text-gray-400">Manage your private assets and environment.</p>
         </div>
-        <button
-          onClick={() => openModal()}
-          className="flex items-center gap-2 bg-primary-600 hover:bg-primary-500 text-white px-4 py-2.5 rounded-lg transition-colors font-medium"
-        >
-          <FiPlus size={18} />
-          Add Repo
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowGitHubModal(true)}
+            className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white px-4 py-2.5 rounded-lg transition-all font-medium shadow-lg shadow-purple-500/30"
+          >
+            <FiPlus size={18} />
+            Create GitHub Repo
+          </button>
+          <button
+            onClick={() => openModal()}
+            className="flex items-center gap-2 bg-primary-600 hover:bg-primary-500 text-white px-4 py-2.5 rounded-lg transition-colors font-medium"
+          >
+            <FiPlus size={18} />
+            Add Repo
+          </button>
+        </div>
       </div>
 
       {/* Filters & Sort */}
@@ -148,11 +202,10 @@ export default function Repositories() {
             <button
               key={filter.value}
               onClick={() => setFilterStatus(filter.value)}
-              className={`px-4 py-2 text-xs font-bold tracking-wider transition-colors ${ 
-                filterStatus === filter.value
-                  ? 'text-white border-b-2 border-white'
-                  : 'text-gray-500 hover:text-gray-300'
-              }`}
+              className={`px-4 py-2 text-xs font-bold tracking-wider transition-colors ${filterStatus === filter.value
+                ? 'text-white border-b-2 border-white'
+                : 'text-gray-500 hover:text-gray-300'
+                }`}
             >
               {filter.label}
             </button>
@@ -180,13 +233,12 @@ export default function Repositories() {
               <tr key={repo.id} className="group hover:bg-gray-800/40 transition-colors">
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-4">
-                    <div className={`p-2.5 rounded-lg ${
-                      repo.status === 'programando' 
-                        ? 'bg-yellow-900/30 text-yellow-400' 
-                        : repo.status === 'activo'
+                    <div className={`p-2.5 rounded-lg ${repo.status === 'programando'
+                      ? 'bg-yellow-900/30 text-yellow-400'
+                      : repo.status === 'activo'
                         ? 'bg-green-900/30 text-green-400'
                         : 'bg-gray-700/50 text-gray-400'
-                    }`}>
+                      }`}>
                       {getIcon(repo.status)}
                     </div>
                     <div>
@@ -204,24 +256,22 @@ export default function Repositories() {
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-2">
-                    <div className={`w-1.5 h-1.5 rounded-full ${
-                      repo.status === 'activo' ? 'bg-green-500' :
+                    <div className={`w-1.5 h-1.5 rounded-full ${repo.status === 'activo' ? 'bg-green-500' :
                       repo.status === 'programando' ? 'bg-yellow-500' :
-                      repo.status === 'archivado' ? 'bg-gray-500' :
-                      'bg-gray-400'
-                    }`}></div>
-                    <span className={`text-xs font-medium uppercase tracking-wider ${
-                      repo.status === 'activo' ? 'text-green-400' :
+                        repo.status === 'archivado' ? 'bg-gray-500' :
+                          'bg-gray-400'
+                      }`}></div>
+                    <span className={`text-xs font-medium uppercase tracking-wider ${repo.status === 'activo' ? 'text-green-400' :
                       repo.status === 'programando' ? 'text-yellow-400' :
-                      repo.status === 'archivado' ? 'bg-gray-700 text-gray-400 px-2 py-0.5 rounded' :
-                      'text-gray-400'
-                    }`}>
+                        repo.status === 'archivado' ? 'bg-gray-700 text-gray-400 px-2 py-0.5 rounded' :
+                          'text-gray-400'
+                      }`}>
                       {repo.status}
                     </span>
                     {repo.status === 'activo' && repo.deployUrl && (
-                      <a 
-                        href={repo.deployUrl} 
-                        target="_blank" 
+                      <a
+                        href={repo.deployUrl}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="ml-2 text-green-400 hover:text-green-300 transition-colors"
                         title="Ver sitio desplegado"
@@ -234,9 +284,9 @@ export default function Repositories() {
                 <td className="px-6 py-4 text-right">
                   <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     {repo.deployUrl && (
-                      <a 
-                        href={repo.deployUrl} 
-                        target="_blank" 
+                      <a
+                        href={repo.deployUrl}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="p-2 text-green-400 hover:text-green-300 hover:bg-gray-700 rounded-lg transition-colors"
                         title="Ver deploy"
@@ -244,23 +294,23 @@ export default function Repositories() {
                         <FiExternalLink size={16} />
                       </a>
                     )}
-                    <a 
-                      href={repo.url} 
-                      target="_blank" 
+                    <a
+                      href={repo.url}
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
                       title="Ver repositorio"
                     >
                       <FiCode size={16} />
                     </a>
-                    <button 
-                      onClick={() => openModal(repo)} 
+                    <button
+                      onClick={() => openModal(repo)}
                       className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
                     >
                       <FiEdit2 size={16} />
                     </button>
-                    <button 
-                      onClick={() => handleDelete(repo.id)} 
+                    <button
+                      onClick={() => handleDelete(repo.id)}
                       className="p-2 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded-lg transition-colors"
                     >
                       <FiTrash2 size={16} />
@@ -384,6 +434,167 @@ export default function Repositories() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* GitHub Repository Modal */}
+      <Modal
+        isOpen={showGitHubModal}
+        onClose={() => setShowGitHubModal(false)}
+        title="Create GitHub Repository"
+      >
+        <form onSubmit={handleGitHubSubmit} className="space-y-4">
+          <div className="bg-blue-900/20 border border-blue-700 rounded-lg p-3 mb-4">
+            <p className="text-blue-300 text-sm">
+              ℹ️ Si es la primera vez que usas esta función, necesitarás reconectar tu cuenta de GitHub para obtener los permisos necesarios.
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Repository Name *</label>
+            <input
+              type="text"
+              value={githubFormData.name}
+              onChange={(e) => setGithubFormData({ ...githubFormData, name: e.target.value })}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+              placeholder="my-awesome-project"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
+            <textarea
+              value={githubFormData.description}
+              onChange={(e) => setGithubFormData({ ...githubFormData, description: e.target.value })}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+              rows="3"
+              placeholder="A brief description of your repository"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="isPrivate"
+              checked={githubFormData.isPrivate}
+              onChange={(e) => setGithubFormData({ ...githubFormData, isPrivate: e.target.checked })}
+              className="w-4 h-4 text-primary-600 bg-gray-700 border-gray-600 rounded focus:ring-primary-500"
+            />
+            <label htmlFor="isPrivate" className="text-sm text-gray-300">
+              Private repository (recommended)
+            </label>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="autoInit"
+              checked={githubFormData.autoInit}
+              onChange={(e) => setGithubFormData({ ...githubFormData, autoInit: e.target.checked })}
+              className="w-4 h-4 text-primary-600 bg-gray-700 border-gray-600 rounded focus:ring-primary-500"
+            />
+            <label htmlFor="autoInit" className="text-sm text-gray-300">
+              Initialize with README
+            </label>
+          </div>
+          <div className="flex gap-2 pt-4">
+            <button
+              type="submit"
+              className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white py-2 rounded-lg transition-all font-medium"
+            >
+              Create on GitHub
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowGitHubModal(false)}
+              className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors font-medium"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Clone Info Modal */}
+      <Modal
+        isOpen={showCloneInfoModal}
+        onClose={() => setShowCloneInfoModal(false)}
+        title="🎉 Repository Created Successfully!"
+      >
+        {cloneInfo && (
+          <div className="space-y-4">
+            <div className="bg-green-900/20 border border-green-700 rounded-lg p-4">
+              <h3 className="text-green-400 font-semibold mb-2">✓ Repository created on GitHub</h3>
+              <p className="text-gray-300 text-sm">
+                Your repository <span className="font-mono text-white">{cloneInfo.name}</span> has been created successfully!
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Clone with HTTPS</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={cloneInfo.cloneUrls.https}
+                  readOnly
+                  className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white font-mono text-sm"
+                />
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(cloneInfo.cloneUrls.https);
+                    alert('HTTPS URL copied to clipboard!');
+                  }}
+                  className="px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition-colors"
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Clone with SSH</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={cloneInfo.cloneUrls.ssh}
+                  readOnly
+                  className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white font-mono text-sm"
+                />
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(cloneInfo.cloneUrls.ssh);
+                    alert('SSH URL copied to clipboard!');
+                  }}
+                  className="px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition-colors"
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+              <p className="text-gray-300 text-sm mb-2">Quick start commands:</p>
+              <pre className="bg-gray-900 p-3 rounded text-xs text-gray-300 overflow-x-auto">
+                {`git clone ${cloneInfo.cloneUrls.https}
+cd ${cloneInfo.name}
+# Start coding! 🚀`}
+              </pre>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <a
+                href={cloneInfo.githubUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors font-medium text-center"
+              >
+                View on GitHub
+              </a>
+              <button
+                onClick={() => setShowCloneInfoModal(false)}
+                className="flex-1 bg-primary-600 hover:bg-primary-500 text-white py-2 rounded-lg transition-colors font-medium"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

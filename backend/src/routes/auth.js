@@ -125,7 +125,7 @@ router.get('/github', (req, res, next) => {
   next();
 }, (req, res, next) => {
   const passport = req.app.get('passport');
-  passport.authenticate('github', { scope: ['user:email'] })(req, res, next);
+  passport.authenticate('github', { scope: ['user:email', 'repo'] })(req, res, next);
 });
 
 // GitHub OAuth - Callback

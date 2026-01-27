@@ -16,7 +16,17 @@ passport.use(
                     where: { githubId: profile.id },
                 });
 
-                if (!user) {
+                if (user) {
+                    // Usuario ya existe con GitHub ID - ACTUALIZAR TOKEN
+                    user = await prisma.user.update({
+                        where: { id: user.id },
+                        data: {
+                            githubAccessToken: accessToken,
+                            githubUsername: profile.username,
+                            avatarUrl: profile.photos?.[0]?.value,
+                        },
+                    });
+                } else {
                     // Si no existe, buscar por email
                     const email = profile.emails?.[0]?.value;
 
@@ -33,6 +43,7 @@ passport.use(
                             data: {
                                 githubId: profile.id,
                                 githubUsername: profile.username,
+                                githubAccessToken: accessToken,
                                 avatarUrl: profile.photos?.[0]?.value,
                             },
                         });
@@ -44,6 +55,7 @@ passport.use(
                                 name: profile.displayName || profile.username,
                                 githubId: profile.id,
                                 githubUsername: profile.username,
+                                githubAccessToken: accessToken,
                                 avatarUrl: profile.photos?.[0]?.value,
                             },
                         });

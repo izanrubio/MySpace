@@ -71,6 +71,78 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Create GitHub repository
+router.post('/github', async (req, res) => {
+  try {
+    const { name, description, isPrivate, autoInit } = req.body;
+
+    // Get user with GitHub access token
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { githubAccessToken: true, githubUsername: true },
+    });
+
+    if (!user?.githubAccessToken) {
+      return res.status(400).json({
+        error: 'GitHub account not connected. Please login with GitHub first.'
+      });
+    }
+
+    // Import Octokit dynamically
+    const { Octokit } = await import('@octokit/rest');
+    const octokit = new Octokit({ auth: user.githubAccessToken });
+
+    // Create repository on GitHub
+    const { data: githubRepo } = await octokit.repos.createForAuthenticatedUser({
+      name,
+      description: description || '',
+      private: isPrivate !== false, // Default to private
+      auto_init: autoInit !== false, // Default to true (creates README)
+    });
+
+    // Save repository to database
+    const repo = await prisma.repository.create({
+      data: {
+        name: githubRepo.name,
+        url: githubRepo.html_url,
+        description: githubRepo.description || '',
+        technology: '',
+        tags: [],
+        status: 'programando',
+        userId: req.userId,
+      },
+    });
+
+    // Return repository info with clone URLs
+    res.status(201).json({
+      ...repo,
+      cloneUrls: {
+        https: githubRepo.clone_url,
+        ssh: githubRepo.ssh_url,
+      },
+      githubUrl: githubRepo.html_url,
+    });
+  } catch (error) {
+    console.error('Error creating GitHub repository:', error);
+
+    if (error.status === 401) {
+      return res.status(401).json({
+        error: 'GitHub authentication failed. Please reconnect your GitHub account.'
+      });
+    }
+
+    if (error.status === 422) {
+      return res.status(422).json({
+        error: 'Repository name already exists or is invalid.'
+      });
+    }
+
+    res.status(500).json({
+      error: error.message || 'Error creating GitHub repository'
+    });
+  }
+});
+
 // Update repository
 router.put('/:id', async (req, res) => {
   try {
