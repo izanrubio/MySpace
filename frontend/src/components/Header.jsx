@@ -132,19 +132,7 @@ export default function Header() {
 
       {/* Right Side - User Info */}
       <div className="flex items-center gap-4">
-        {/* Connected Account Badge */}
-        {user?.githubUsername && (
-          <a
-            href={`https://github.com/${user.githubUsername}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 py-1.5 bg-gray-700/50 border border-gray-600 rounded-lg hover:bg-gray-700 hover:border-primary-500 transition-colors cursor-pointer"
-          >
-            <FiGithub className="text-gray-400" size={16} />
-            <span className="text-xs text-gray-400">Connected as</span>
-            <span className="text-sm text-white font-medium hover:text-primary-400 transition-colors">@{user.githubUsername}</span>
-          </a>
-        )}
+
 
         {/* User Menu */}
         <div className="relative user-menu-container">
