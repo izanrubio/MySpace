@@ -143,6 +143,9 @@ router.get('/github/callback', (req, res, next) => {
 
     console.log('✅ User authenticated:', user.email);
 
+    // Sync GitHub repositories in background
+    syncGitHubRepositories(user).catch(err => console.error('Error in background sync:', err));
+
     // Generate JWT token
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
       expiresIn: process.env.JWT_EXPIRES_IN,
@@ -156,6 +159,59 @@ router.get('/github/callback', (req, res, next) => {
     res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`);
   })(req, res, next);
 });
+
+// Helper function to sync GitHub repositories
+async function syncGitHubRepositories(user) {
+  if (!user.githubAccessToken) return;
+
+  try {
+    console.log(`🔄 Starting GitHub repo sync for ${user.email}...`);
+    const { Octokit } = await import('@octokit/rest');
+    const octokit = new Octokit({ auth: user.githubAccessToken });
+
+    // Fetch repositories (limit to 100 latest)
+    const { data: repos } = await octokit.repos.listForAuthenticatedUser({
+      visibility: 'all',
+      sort: 'updated',
+      direction: 'desc',
+      per_page: 100,
+    });
+
+    console.log(`📡 Found ${repos.length} repositories on GitHub`);
+
+    // Get existing repositories for this user
+    const existingRepos = await prisma.repository.findMany({
+      where: { userId: user.id },
+      select: { url: true },
+    });
+
+    const existingUrls = new Set(existingRepos.map(r => r.url));
+    let newReposCount = 0;
+
+    for (const repo of repos) {
+      if (!existingUrls.has(repo.html_url)) {
+        await prisma.repository.create({
+          data: {
+            name: repo.name,
+            url: repo.html_url,
+            description: repo.description || '',
+            technology: repo.language || 'Unknown',
+            tags: repo.topics || [], // GitHub topics as tags
+            status: 'activo',
+            deployUrl: repo.homepage || null,
+            isPrivate: repo.private,
+            userId: user.id,
+          },
+        });
+        newReposCount++;
+      }
+    }
+
+    console.log(`✅ Synced ${newReposCount} new repositories from GitHub`);
+  } catch (error) {
+    console.error('❌ Error syncing GitHub repositories:', error);
+  }
+}
 
 export default router;
 

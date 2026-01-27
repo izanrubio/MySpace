@@ -50,7 +50,7 @@ router.get('/:id', async (req, res) => {
 // Create repository
 router.post('/', async (req, res) => {
   try {
-    const { name, url, deployUrl, description, technology, tags, status } = req.body;
+    const { name, url, deployUrl, description, technology, tags, status, isPrivate } = req.body;
 
     const repo = await prisma.repository.create({
       data: {
@@ -61,6 +61,7 @@ router.post('/', async (req, res) => {
         technology,
         tags: tags || [],
         status: status || 'activo',
+        isPrivate: isPrivate || false,
         userId: req.userId,
       },
     });
@@ -109,6 +110,7 @@ router.post('/github', async (req, res) => {
         technology: '',
         tags: [],
         status: 'programando',
+        isPrivate: githubRepo.private,
         userId: req.userId,
       },
     });

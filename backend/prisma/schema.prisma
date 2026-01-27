@@ -37,6 +37,7 @@ model Repository {
   description String?
   technology  String?
   tags        String[] // Array de tags
+  isPrivate   Boolean  @default(false)
   status      String   @default("activo") // activo, archivado, programando
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

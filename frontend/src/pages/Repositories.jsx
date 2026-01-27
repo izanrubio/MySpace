@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  FiPlus, FiEdit2, FiTrash2, FiExternalLink, FiFileText, FiZap, FiCode, FiGitBranch
+  FiPlus, FiEdit2, FiTrash2, FiExternalLink, FiFileText, FiZap, FiCode, FiGitBranch, FiLock, FiGlobe
 } from 'react-icons/fi';
 import { repositories } from '../services/api';
 import Modal from '../components/Modal';
@@ -274,7 +274,18 @@ export default function Repositories() {
                       {getIcon(repo.status)}
                     </div>
                     <div>
-                      <h3 className="font-semibold text-white text-[15px]">{repo.name}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-white text-[15px]">{repo.name}</h3>
+                        {repo.isPrivate !== undefined && (
+                          <span title={repo.isPrivate ? "Private Repository" : "Public Repository"}>
+                            {repo.isPrivate ? (
+                              <FiLock size={12} className="text-gray-500" />
+                            ) : (
+                              <FiGlobe size={12} className="text-gray-500" />
+                            )}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-gray-500 text-xs mt-0.5">
                         {repo.description || `Updated 2h ago`}
                       </p>
