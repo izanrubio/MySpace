@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Repositories from './pages/Repositories';
 import AIResources from './pages/AIResources';
 import Projects from './pages/Projects';
+import Languages from './pages/Languages';
 
 function App() {
   const { user, loading } = useAuth();
@@ -27,6 +28,7 @@ function App() {
         <Route path="repositories" element={<Repositories />} />
         <Route path="ai-resources" element={<AIResources />} />
         <Route path="projects" element={<Projects />} />
+        <Route path="languages" element={<Languages />} />
       </Route>
     </Routes>
   );

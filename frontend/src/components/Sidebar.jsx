@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { FiGitBranch, FiCpu, FiFolderPlus, FiLogOut } from 'react-icons/fi';
+import { FiGitBranch, FiCpu, FiFolderPlus, FiLogOut, FiCode } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 
 export default function Sidebar() {
@@ -9,6 +9,7 @@ export default function Sidebar() {
     { to: '/repositories', icon: FiGitBranch, label: 'Repositories' },
     { to: '/ai-resources', icon: FiCpu, label: 'IAs' },
     { to: '/projects', icon: FiFolderPlus, label: 'Projects' },
+    { to: '/languages', icon: FiCode, label: 'Lenguajes' },
   ];
 
   return (
@@ -24,10 +25,9 @@ export default function Sidebar() {
             key={link.to}
             to={link.to}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                isActive
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-300 hover:bg-gray-700'
+              `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
+                ? 'bg-primary-600 text-white'
+                : 'text-gray-300 hover:bg-gray-700'
               }`
             }
           >

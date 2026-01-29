@@ -71,4 +71,14 @@ export const search = {
   getTags: () => api.get('/search/tags'),
 };
 
+// Languages
+export const languages = {
+  getAll: () => api.get('/languages'),
+  getById: (id) => api.get(`/languages/${id}`),
+  create: (data) => api.post('/languages', data),
+  update: (id, data) => api.put(`/languages/${id}`, data),
+  delete: (id) => api.delete(`/languages/${id}`),
+  generate: (languageName) => api.post('/languages/generate', { languageName }),
+};
+
 export default api;

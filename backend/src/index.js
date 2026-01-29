@@ -9,6 +9,7 @@ import aiRoutes from './routes/aiResources.js';
 import folderRoutes from './routes/folders.js';
 import projectRoutes from './routes/projects.js';
 import searchRoutes from './routes/search.js';
+import languageRoutes from './routes/languages.js';
 
 dotenv.config();
 
@@ -47,6 +48,7 @@ app.use('/api/ai-resources', aiRoutes);
 app.use('/api/folders', folderRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/languages', languageRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
