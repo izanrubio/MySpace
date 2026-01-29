@@ -10,9 +10,9 @@ router.use(authMiddleware);
 router.get('/', async (req, res) => {
   try {
     const { folderId } = req.query;
-    
+
     const where = {};
-    
+
     if (folderId) {
       where.folderId = folderId;
     }
@@ -24,7 +24,7 @@ router.get('/', async (req, res) => {
       },
       orderBy: { createdAt: 'desc' },
     });
-    
+
     res.json(aiResources);
   } catch (error) {
     res.status(500).json({ error: 'Error fetching AI resources' });
@@ -61,6 +61,21 @@ router.post('/', async (req, res) => {
   try {
     const { name, url, type, description, tags, folderId } = req.body;
 
+    // Validate required fields
+    if (!name || !url || !type) {
+      return res.status(400).json({
+        error: 'Missing required fields: name, url, and type are required'
+      });
+    }
+
+    // Validate type
+    const validTypes = ['web', 'local', 'api'];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({
+        error: `Invalid type. Must be one of: ${validTypes.join(', ')}`
+      });
+    }
+
     // Verify folder belongs to user if folderId is provided
     if (folderId) {
       const folder = await prisma.folder.findFirst({
@@ -91,7 +106,8 @@ router.post('/', async (req, res) => {
 
     res.status(201).json(aiResource);
   } catch (error) {
-    res.status(500).json({ error: 'Error creating AI resource' });
+    console.error('Error creating AI resource:', error);
+    res.status(500).json({ error: 'Error creating AI resource: ' + error.message });
   }
 });
 

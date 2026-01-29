@@ -22,6 +22,7 @@ export default function AIResources() {
   const [aiForm, setAiForm] = useState({
     name: '',
     url: '',
+    type: 'web',
     description: '',
     folderId: '',
   });
@@ -52,7 +53,7 @@ export default function AIResources() {
         ...folderForm,
         parentId: folderForm.parentId || null,
       };
-      
+
       if (editingFolder) {
         await folders.update(editingFolder.id, data);
       } else {
@@ -83,6 +84,7 @@ export default function AIResources() {
       closeAIModal();
     } catch (error) {
       console.error('Error saving AI resource:', error);
+      alert('Error al guardar el recurso IA: ' + (error.response?.data?.error || error.message));
     }
   };
 
@@ -134,6 +136,7 @@ export default function AIResources() {
       setAiForm({
         name: ai.name,
         url: ai.url,
+        type: ai.type || 'web',
         description: ai.description || '',
         folderId: ai.folderId || '',
       });
@@ -142,6 +145,7 @@ export default function AIResources() {
       setAiForm({
         name: '',
         url: '',
+        type: 'web',
         description: '',
         folderId: folderId || '',
       });
@@ -231,9 +235,9 @@ export default function AIResources() {
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <h4 className="text-white font-medium">{ai.name}</h4>
-                      <a 
-                        href={ai.url} 
-                        target="_blank" 
+                      <a
+                        href={ai.url}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="text-sm text-primary-400 hover:text-primary-300 hover:underline"
                       >
@@ -321,9 +325,9 @@ export default function AIResources() {
                       </button>
                     </div>
                   </div>
-                  <a 
-                    href={ai.url} 
-                    target="_blank" 
+                  <a
+                    href={ai.url}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm text-primary-400 hover:text-primary-300 hover:underline block mb-2"
                   >
@@ -419,6 +423,22 @@ export default function AIResources() {
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
               required
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Tipo *
+            </label>
+            <select
+              value={aiForm.type}
+              onChange={(e) => setAiForm({ ...aiForm, type: e.target.value })}
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+              required
+            >
+              <option value="web">Web</option>
+              <option value="local">Local</option>
+              <option value="api">API</option>
+            </select>
           </div>
 
           <div>
