@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { FiPlus, FiEdit2, FiTrash2, FiFolder, FiChevronRight, FiChevronDown, FiExternalLink, FiCpu, FiSearch } from 'react-icons/fi';
+import { useState, useEffect, useRef } from 'react';
+import { FiPlus, FiEdit2, FiTrash2, FiFolder, FiExternalLink, FiCpu, FiSearch, FiHome, FiMoreVertical } from 'react-icons/fi';
 import { folders, aiResources } from '../services/api';
 import Modal from '../components/Modal';
 
@@ -11,8 +11,10 @@ export default function AIResources() {
   const [showAIModal, setShowAIModal] = useState(false);
   const [editingFolder, setEditingFolder] = useState(null);
   const [editingAI, setEditingAI] = useState(null);
-  const [expandedFolders, setExpandedFolders] = useState(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentFolderId, setCurrentFolderId] = useState(null);
+  const [contextMenu, setContextMenu] = useState(null);
+  const contextMenuRef = useRef(null);
 
   const [folderForm, setFolderForm] = useState({
     name: '',
@@ -23,13 +25,23 @@ export default function AIResources() {
   const [aiForm, setAiForm] = useState({
     name: '',
     url: '',
-    type: 'web',
     description: '',
     folderId: '',
   });
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  // Close context menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target)) {
+        setContextMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const loadData = async () => {
@@ -52,7 +64,7 @@ export default function AIResources() {
     try {
       const data = {
         ...folderForm,
-        parentId: folderForm.parentId || null,
+        parentId: folderForm.parentId || currentFolderId || null,
       };
 
       if (editingFolder) {
@@ -73,7 +85,7 @@ export default function AIResources() {
     try {
       const data = {
         ...aiForm,
-        folderId: aiForm.folderId || null,
+        folderId: aiForm.folderId || currentFolderId || null,
       };
 
       if (editingAI) {
@@ -90,10 +102,11 @@ export default function AIResources() {
   };
 
   const handleDeleteFolder = async (id) => {
-    if (confirm('Delete this folder and its contents?')) {
+    if (confirm('¿Eliminar esta carpeta y su contenido?')) {
       try {
         await folders.delete(id);
         loadData();
+        setContextMenu(null);
       } catch (error) {
         console.error('Error deleting folder:', error);
       }
@@ -101,10 +114,11 @@ export default function AIResources() {
   };
 
   const handleDeleteAI = async (id) => {
-    if (confirm('Delete this AI resource?')) {
+    if (confirm('¿Eliminar este recurso IA?')) {
       try {
         await aiResources.delete(id);
         loadData();
+        setContextMenu(null);
       } catch (error) {
         console.error('Error deleting AI resource:', error);
       }
@@ -121,9 +135,10 @@ export default function AIResources() {
       });
     } else {
       setEditingFolder(null);
-      setFolderForm({ name: '', description: '', parentId: '' });
+      setFolderForm({ name: '', description: '', parentId: currentFolderId || '' });
     }
     setShowFolderModal(true);
+    setContextMenu(null);
   };
 
   const closeFolderModal = () => {
@@ -137,7 +152,6 @@ export default function AIResources() {
       setAiForm({
         name: ai.name,
         url: ai.url,
-        type: ai.type || 'web',
         description: ai.description || '',
         folderId: ai.folderId || '',
       });
@@ -146,12 +160,12 @@ export default function AIResources() {
       setAiForm({
         name: '',
         url: '',
-        type: 'web',
         description: '',
-        folderId: folderId || '',
+        folderId: folderId || currentFolderId || '',
       });
     }
     setShowAIModal(true);
+    setContextMenu(null);
   };
 
   const closeAIModal = () => {
@@ -159,21 +173,51 @@ export default function AIResources() {
     setEditingAI(null);
   };
 
-  const toggleFolder = (folderId) => {
-    const newExpanded = new Set(expandedFolders);
-    if (newExpanded.has(folderId)) {
-      newExpanded.delete(folderId);
-    } else {
-      newExpanded.add(folderId);
+  const handleFolderDoubleClick = (folderId) => {
+    setCurrentFolderId(folderId);
+    setSearchQuery('');
+  };
+
+  const handleContextMenu = (e, item, type) => {
+    e.preventDefault();
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      item,
+      type,
+    });
+  };
+
+  const getBreadcrumbs = () => {
+    const breadcrumbs = [];
+    let current = currentFolderId;
+
+    while (current) {
+      const folder = folderList.find(f => f.id === current);
+      if (folder) {
+        breadcrumbs.unshift(folder);
+        current = folder.parentId;
+      } else {
+        break;
+      }
     }
-    setExpandedFolders(newExpanded);
+
+    return breadcrumbs;
   };
 
-  const getUnfiledAIs = () => {
-    return aiList.filter((ai) => !ai.folderId);
+  const getCurrentFolders = () => {
+    return folderList.filter(f => f.parentId === currentFolderId);
   };
 
-  const filteredAIs = getUnfiledAIs().filter(ai =>
+  const getCurrentAIs = () => {
+    return aiList.filter(ai => ai.folderId === currentFolderId);
+  };
+
+  const filteredFolders = getCurrentFolders().filter(folder =>
+    folder.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredAIs = getCurrentAIs().filter(ai =>
     ai.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     ai.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -186,17 +230,11 @@ export default function AIResources() {
     );
   }
 
-  const getTypeColor = (type) => {
-    const colors = {
-      'web': 'from-blue-500 to-cyan-500',
-      'local': 'from-green-500 to-emerald-500',
-      'api': 'from-orange-500 to-red-500',
-    };
-    return colors[type] || 'from-purple-500 to-pink-500';
-  };
+
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white mb-2">AI Resources</h1>
@@ -208,246 +246,232 @@ export default function AIResources() {
             className="flex items-center gap-2 px-5 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-medium transition-all"
           >
             <FiFolder size={18} />
-            New Folder
+            Nueva Carpeta
           </button>
           <button
             onClick={() => openAIModal()}
             className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg shadow-purple-500/50 hover:shadow-purple-500/70 transition-all"
           >
             <FiPlus size={20} />
-            New AI Resource
+            Nuevo Recurso IA
           </button>
         </div>
       </div>
 
+      {/* Breadcrumbs */}
+      <div className="flex items-center gap-2 text-sm">
+        <button
+          onClick={() => setCurrentFolderId(null)}
+          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-all"
+        >
+          <FiHome size={16} />
+          <span>Inicio</span>
+        </button>
+        {getBreadcrumbs().map((folder, index) => (
+          <div key={folder.id} className="flex items-center gap-2">
+            <span className="text-slate-500">/</span>
+            <button
+              onClick={() => setCurrentFolderId(folder.id)}
+              className="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-all"
+            >
+              {folder.name}
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* Search */}
       <div className="relative">
         <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
         <input
           type="text"
-          placeholder="Search AI resources..."
+          placeholder="Buscar recursos..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all"
         />
       </div>
 
-      <div className="space-y-6">
-        {/* Folders Section */}
-        {folderList.length > 0 && (
-          <div className="space-y-4">
-            {folderList.filter(folder => !folder.parentId).map((folder) => (
-              <div key={folder.id} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden">
-                {/* Folder Header */}
-                <div className="flex items-center justify-between p-4 hover:bg-white/5 transition-all">
-                  <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => toggleFolder(folder.id)}>
-                    <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500">
-                      <FiFolder className="text-white" size={20} />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-white">{folder.name}</h3>
-                      {folder.description && (
-                        <p className="text-sm text-slate-400">{folder.description}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-slate-400">
-                        {aiList.filter(ai => ai.folderId === folder.id).length} recursos
-                      </span>
-                      {expandedFolders.has(folder.id) ? (
-                        <FiChevronDown className="text-slate-400" size={20} />
-                      ) : (
-                        <FiChevronRight className="text-slate-400" size={20} />
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex gap-1 ml-3">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openFolderModal(folder);
-                      }}
-                      className="p-2 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-white/10 transition-all"
-                      title="Edit Folder"
-                    >
-                      <FiEdit2 size={16} />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteFolder(folder.id);
-                      }}
-                      className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-white/10 transition-all"
-                      title="Delete Folder"
-                    >
-                      <FiTrash2 size={16} />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openAIModal(null, folder.id);
-                      }}
-                      className="p-2 rounded-lg text-slate-400 hover:text-purple-400 hover:bg-white/10 transition-all"
-                      title="Add AI Resource"
-                    >
-                      <FiPlus size={16} />
-                    </button>
-                  </div>
+      {/* Grid View */}
+      <div
+        className="relative min-h-[500px]"
+        onContextMenu={(e) => {
+          // Check if we're clicking on the container or empty space
+          const isGridOrBackground = e.target.classList.contains('grid') ||
+            e.target.classList.contains('context-menu-area') ||
+            e.target === e.currentTarget;
+
+          if (isGridOrBackground) {
+            e.preventDefault();
+            handleContextMenu(e, null, 'empty');
+          }
+        }}
+      >
+        {/* Background overlay for better click detection */}
+        <div className="absolute inset-0 context-menu-area" />
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 relative z-10">
+          {/* Folders */}
+          {filteredFolders.map((folder) => (
+            <div
+              key={folder.id}
+              onDoubleClick={() => handleFolderDoubleClick(folder.id)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleContextMenu(e, folder, 'folder');
+              }}
+              className="group relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 hover:bg-white/10 hover:border-purple-500/30 transition-all cursor-pointer"
+            >
+              <div className="flex flex-col items-center gap-2">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 shadow-lg">
+                  <FiFolder className="text-white" size={28} />
                 </div>
-
-                {/* Folder Contents */}
-                {expandedFolders.has(folder.id) && (
-                  <div className="p-4 pt-0">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {aiList
-                        .filter((ai) => ai.folderId === folder.id)
-                        .filter(ai =>
-                          ai.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          ai.description?.toLowerCase().includes(searchQuery.toLowerCase())
-                        )
-                        .map((ai) => (
-                          <div
-                            key={ai.id}
-                            className="group bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 hover:bg-white/10 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/20 transition-all duration-300"
-                          >
-                            <div className="flex items-start justify-between mb-3">
-                              <div className={`p-2 rounded-lg bg-gradient-to-br ${getTypeColor(ai.type)} shadow-lg`}>
-                                <FiCpu className="text-white" size={16} />
-                              </div>
-                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button
-                                  onClick={() => openAIModal(ai)}
-                                  className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-white/10 transition-all"
-                                  title="Edit"
-                                >
-                                  <FiEdit2 size={14} />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteAI(ai.id)}
-                                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-white/10 transition-all"
-                                  title="Delete"
-                                >
-                                  <FiTrash2 size={14} />
-                                </button>
-                              </div>
-                            </div>
-
-                            <h4 className="text-base font-semibold text-white mb-2">{ai.name}</h4>
-
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-slate-300 font-medium uppercase">
-                                {ai.type}
-                              </span>
-                            </div>
-
-                            {ai.description && (
-                              <p className="text-xs text-slate-400 mb-3 line-clamp-2">{ai.description}</p>
-                            )}
-
-                            <a
-                              href={ai.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 transition-colors"
-                            >
-                              <FiExternalLink size={12} />
-                              <span className="truncate">{ai.url}</span>
-                            </a>
-                          </div>
-                        ))}
-                    </div>
-                    {aiList.filter((ai) => ai.folderId === folder.id).length === 0 && (
-                      <div className="text-center py-8 text-slate-400 text-sm">
-                        No AI resources in this folder
-                      </div>
-                    )}
-                  </div>
-                )}
+                <div className="text-center w-full">
+                  <p className="text-sm font-medium text-white truncate">{folder.name}</p>
+                  <p className="text-xs text-slate-400">
+                    {aiList.filter(ai => ai.folderId === folder.id).length} recursos
+                  </p>
+                </div>
               </div>
-            ))}
-          </div>
-        )}
-
-        {/* Unfiled AI Resources */}
-        {filteredAIs.length > 0 && (
-          <div>
-            <h2 className="text-xl font-semibold text-white mb-4">Unfiled Resources</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredAIs.map((ai) => (
-                <div
-                  key={ai.id}
-                  className="group bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:bg-white/10 hover:border-purple-500/50 hover:shadow-xl hover:shadow-purple-500/20 transition-all duration-300"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className={`p-3 rounded-xl bg-gradient-to-br ${getTypeColor(ai.type)} shadow-lg`}>
-                      <FiCpu className="text-white" size={20} />
-                    </div>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => openAIModal(ai)}
-                        className="p-2 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-white/10 transition-all"
-                        title="Edit"
-                      >
-                        <FiEdit2 size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteAI(ai.id)}
-                        className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-white/10 transition-all"
-                        title="Delete"
-                      >
-                        <FiTrash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-
-                  <h3 className="text-lg font-semibold text-white mb-2">{ai.name}</h3>
-
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="px-3 py-1 bg-white/10 rounded-lg text-xs text-slate-300 font-medium uppercase">
-                      {ai.type}
-                    </span>
-                  </div>
-
-                  {ai.description && (
-                    <p className="text-sm text-slate-400 mb-4 line-clamp-2">{ai.description}</p>
-                  )}
-
-                  <a
-                    href={ai.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300 transition-colors"
-                  >
-                    <FiExternalLink size={14} />
-                    <span className="truncate">{ai.url}</span>
-                  </a>
-                </div>
-              ))}
             </div>
-          </div>
-        )}
+          ))}
 
-        {/* Empty State */}
-        {folderList.length === 0 && filteredAIs.length === 0 && (
-          <div className="text-center py-12 text-slate-400">
-            No AI resources or folders found. Create your first folder or AI resource to get started!
-          </div>
-        )}
+          {/* AI Resources */}
+          {filteredAIs.map((ai) => (
+            <div
+              key={ai.id}
+              onDoubleClick={() => window.open(ai.url, '_blank')}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleContextMenu(e, ai, 'ai');
+              }}
+              className="group relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 hover:bg-white/10 hover:border-purple-500/30 transition-all cursor-pointer"
+            >
+              <div className="flex flex-col items-center gap-2">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg">
+                  <FiCpu className="text-white" size={28} />
+                </div>
+                <div className="text-center w-full">
+                  <p className="text-sm font-medium text-white truncate">{ai.name}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <Modal isOpen={showFolderModal} onClose={closeFolderModal} title={editingFolder ? 'Edit Folder' : 'New Folder'}>
+      {/* Empty State */}
+      {filteredFolders.length === 0 && filteredAIs.length === 0 && (
+        <div className="text-center py-16">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/5 mb-4">
+            <FiFolder className="text-slate-400" size={32} />
+          </div>
+          <p className="text-slate-400 text-lg">
+            {searchQuery ? 'No se encontraron resultados' : 'Esta carpeta está vacía'}
+          </p>
+          <p className="text-slate-500 text-sm mt-2">
+            {searchQuery ? 'Intenta con otra búsqueda' : 'Crea una carpeta o recurso para comenzar'}
+          </p>
+        </div>
+      )}
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          ref={contextMenuRef}
+          className="fixed z-50 bg-slate-900 border border-white/10 rounded-xl shadow-2xl py-2 min-w-[200px]"
+          style={{
+            left: `${contextMenu.x}px`,
+            top: `${contextMenu.y}px`,
+          }}
+        >
+          {contextMenu.type === 'folder' ? (
+            <>
+              <button
+                onClick={() => handleFolderDoubleClick(contextMenu.item.id)}
+                className="w-full px-4 py-2 text-left text-sm text-white hover:bg-white/10 transition-all flex items-center gap-3"
+              >
+                <FiFolder size={16} />
+                Abrir
+              </button>
+              <button
+                onClick={() => openFolderModal(contextMenu.item)}
+                className="w-full px-4 py-2 text-left text-sm text-white hover:bg-white/10 transition-all flex items-center gap-3"
+              >
+                <FiEdit2 size={16} />
+                Editar
+              </button>
+              <button
+                onClick={() => handleDeleteFolder(contextMenu.item.id)}
+                className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 transition-all flex items-center gap-3"
+              >
+                <FiTrash2 size={16} />
+                Eliminar
+              </button>
+            </>
+          ) : contextMenu.type === 'ai' ? (
+            <>
+              <button
+                onClick={() => window.open(contextMenu.item.url, '_blank')}
+                className="w-full px-4 py-2 text-left text-sm text-white hover:bg-white/10 transition-all flex items-center gap-3"
+              >
+                <FiExternalLink size={16} />
+                Abrir enlace
+              </button>
+              <button
+                onClick={() => openAIModal(contextMenu.item)}
+                className="w-full px-4 py-2 text-left text-sm text-white hover:bg-white/10 transition-all flex items-center gap-3"
+              >
+                <FiEdit2 size={16} />
+                Editar
+              </button>
+              <button
+                onClick={() => handleDeleteAI(contextMenu.item.id)}
+                className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 transition-all flex items-center gap-3"
+              >
+                <FiTrash2 size={16} />
+                Eliminar
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => openFolderModal()}
+                className="w-full px-4 py-2 text-left text-sm text-white hover:bg-white/10 transition-all flex items-center gap-3"
+              >
+                <FiFolder size={16} />
+                Nueva Carpeta
+              </button>
+              <button
+                onClick={() => openAIModal()}
+                className="w-full px-4 py-2 text-left text-sm text-white hover:bg-white/10 transition-all flex items-center gap-3"
+              >
+                <FiPlus size={16} />
+                Nuevo Recurso IA
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Folder Modal */}
+      <Modal isOpen={showFolderModal} onClose={closeFolderModal} title={editingFolder ? 'Editar Carpeta' : 'Nueva Carpeta'}>
         <form onSubmit={handleFolderSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Name</label>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Nombre</label>
             <input
               type="text"
               value={folderForm.name}
               onChange={(e) => setFolderForm({ ...folderForm, name: e.target.value })}
               className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all"
               required
+              autoFocus
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Description</label>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Descripción</label>
             <textarea
               value={folderForm.description}
               onChange={(e) => setFolderForm({ ...folderForm, description: e.target.value })}
@@ -460,29 +484,31 @@ export default function AIResources() {
               type="submit"
               className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all"
             >
-              {editingFolder ? 'Update' : 'Create'}
+              {editingFolder ? 'Actualizar' : 'Crear'}
             </button>
             <button
               type="button"
               onClick={closeFolderModal}
               className="flex-1 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-medium transition-all"
             >
-              Cancel
+              Cancelar
             </button>
           </div>
         </form>
       </Modal>
 
-      <Modal isOpen={showAIModal} onClose={closeAIModal} title={editingAI ? 'Edit AI Resource' : 'New AI Resource'}>
+      {/* AI Resource Modal */}
+      <Modal isOpen={showAIModal} onClose={closeAIModal} title={editingAI ? 'Editar Recurso IA' : 'Nuevo Recurso IA'}>
         <form onSubmit={handleAISubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Name</label>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Nombre</label>
             <input
               type="text"
               value={aiForm.name}
               onChange={(e) => setAiForm({ ...aiForm, name: e.target.value })}
               className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all"
               required
+              autoFocus
             />
           </div>
           <div>
@@ -496,20 +522,22 @@ export default function AIResources() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Type</label>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Carpeta</label>
             <select
-              value={aiForm.type}
-              onChange={(e) => setAiForm({ ...aiForm, type: e.target.value })}
+              value={aiForm.folderId}
+              onChange={(e) => setAiForm({ ...aiForm, folderId: e.target.value })}
               className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all"
-              required
             >
-              <option value="web">Web</option>
-              <option value="local">Local</option>
-              <option value="api">API</option>
+              <option value="">Sin carpeta</option>
+              {folderList.map((folder) => (
+                <option key={folder.id} value={folder.id}>
+                  {folder.parentId ? '  └─ ' : ''}{folder.name}
+                </option>
+              ))}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Description</label>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Descripción</label>
             <textarea
               value={aiForm.description}
               onChange={(e) => setAiForm({ ...aiForm, description: e.target.value })}
@@ -522,18 +550,18 @@ export default function AIResources() {
               type="submit"
               className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all"
             >
-              {editingAI ? 'Update' : 'Create'}
+              {editingAI ? 'Actualizar' : 'Crear'}
             </button>
             <button
               type="button"
               onClick={closeAIModal}
               className="flex-1 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-medium transition-all"
             >
-              Cancel
+              Cancelar
             </button>
           </div>
         </form>
       </Modal>
-    </div>
+    </div >
   );
 }
