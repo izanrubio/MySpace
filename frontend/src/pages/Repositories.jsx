@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
-import {
-  FiPlus, FiEdit2, FiTrash2, FiExternalLink, FiFileText, FiZap, FiCode, FiGitBranch, FiLock, FiGlobe
-} from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiExternalLink, FiGitBranch, FiLock, FiGlobe, FiCode, FiSearch, FiStar } from 'react-icons/fi';
 import { repositories } from '../services/api';
 import Modal from '../components/Modal';
 
@@ -13,7 +11,7 @@ export default function Repositories() {
   const [showCloneInfoModal, setShowCloneInfoModal] = useState(false);
   const [cloneInfo, setCloneInfo] = useState(null);
   const [editingRepo, setEditingRepo] = useState(null);
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     url: '',
@@ -70,30 +68,21 @@ export default function Repositories() {
     e.preventDefault();
     try {
       const response = await repositories.createGitHub(githubFormData);
-
-      // Show clone info modal
       setCloneInfo(response.data);
       setShowGitHubModal(false);
       setShowCloneInfoModal(true);
-
-      // Reset form
       setGithubFormData({
         name: '',
         description: '',
         isPrivate: true,
         autoInit: true,
       });
-
-      // Reload repositories
       loadRepos();
     } catch (error) {
       console.error('Error creating GitHub repo:', error);
       const errorMessage = error.response?.data?.error || 'Error creating GitHub repository';
-
-      // Check if it's an authentication error
       if (error.response?.status === 400 || error.response?.status === 401) {
-        if (confirm(`${errorMessage}\n\n¿Quieres reconectar tu cuenta de GitHub para obtener los permisos necesarios?`)) {
-          // Redirect to GitHub OAuth
+        if (confirm(`${errorMessage}\n\n¿Quieres reconectar tu cuenta de GitHub?`)) {
           window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/auth/github`;
         }
       } else {
@@ -103,7 +92,7 @@ export default function Repositories() {
   };
 
   const handleDelete = async (id) => {
-    if (confirm('¿Seguro que quieres eliminar este repositorio?')) {
+    if (confirm('Are you sure you want to delete this repository?')) {
       try {
         await repositories.delete(id);
         loadRepos();
@@ -145,31 +134,9 @@ export default function Repositories() {
     setEditingRepo(null);
   };
 
-  const filteredRepos = repos.filter(repo => {
-    if (filterStatus === 'all') return true;
-    return repo.status === filterStatus;
-  });
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
-      </div>
-    );
-  }
-
-  const getIcon = (status) => {
-    if (status === 'programando') return <FiCode className="text-lg" />;
-    if (status === 'archivado') return <FiFileText className="text-lg" />;
-    return <FiZap className="text-lg" />;
-  };
-
   const showCloneInfo = (repo) => {
-    // Generate clone URLs from repository URL
     const generateCloneUrls = (url) => {
-      // Check if it's a GitHub URL
       if (url.includes('github.com')) {
-        // Extract owner and repo name from URL
         const match = url.match(/github\.com\/([^\/]+)\/([^\/\.]+)/);
         if (match) {
           const [, owner, repoName] = match;
@@ -179,7 +146,6 @@ export default function Repositories() {
           };
         }
       }
-      // For non-GitHub repos, try to generate generic URLs
       return {
         https: url.endsWith('.git') ? url : `${url}.git`,
         ssh: url.replace('https://', 'git@').replace('/', ':') + (url.endsWith('.git') ? '' : '.git'),
@@ -196,279 +162,212 @@ export default function Repositories() {
     setShowCloneInfoModal(true);
   };
 
+  const filteredRepos = repos.filter(repo =>
+    repo.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    repo.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  const getLanguageColor = (tech) => {
+    const colors = {
+      'JavaScript': '#f1e05a',
+      'TypeScript': '#3178c6',
+      'Python': '#3572A5',
+      'React': '#61dafb',
+      'Vue': '#42b883',
+      'NextJS': '#000000',
+      'NestJS': '#e0234e',
+    };
+    return colors[tech] || '#8b949e';
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-4xl font-bold text-white mb-2">Repositories</h1>
-          <p className="text-gray-400">Manage your private assets and environment.</p>
-        </div>
-        <div>
-          <button
-            onClick={() => setShowGitHubModal(true)}
-            className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white px-4 py-2.5 rounded-lg transition-all font-medium shadow-lg shadow-purple-500/30"
-          >
-            <FiPlus size={18} />
-            Create GitHub Repo
-          </button>
-        </div>
-      </div>
-
-      {/* Filters & Sort */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {[
-            { label: 'ALL', value: 'all' },
-            { label: 'ACTIVO', value: 'activo' },
-            { label: 'PROGRAMANDO', value: 'programando' },
-            { label: 'ARCHIVADO', value: 'archivado' },
-          ].map((filter) => (
-            <button
-              key={filter.value}
-              onClick={() => setFilterStatus(filter.value)}
-              className={`px-4 py-2 text-xs font-bold tracking-wider transition-colors ${filterStatus === filter.value
-                ? 'text-white border-b-2 border-white'
-                : 'text-gray-500 hover:text-gray-300'
-                }`}
-            >
-              {filter.label}
-            </button>
-          ))}
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Repositories</h1>
+          <p className="text-slate-600 dark:text-slate-400">Manage your code repositories and projects</p>
         </div>
-
+        <button
+          onClick={() => setShowGitHubModal(true)}
+          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg shadow-purple-500/50 hover:shadow-purple-500/70 transition-all"
+        >
+          <FiPlus size={20} />
+          New Repository
+        </button>
       </div>
 
-      {/* Table */}
-      <div className="bg-black/40 border border-gray-800 rounded-lg overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-800 bg-black/20">
-              <th className="text-left px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
-              <th className="text-left px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Technology</th>
-              <th className="text-left px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="text-right px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-800/50">
-            {filteredRepos.map((repo) => (
-              <tr key={repo.id} className="group hover:bg-gray-800/40 transition-colors">
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-4">
-                    <div className={`p-2.5 rounded-lg ${repo.status === 'programando'
-                      ? 'bg-yellow-900/30 text-yellow-400'
-                      : repo.status === 'activo'
-                        ? 'bg-green-900/30 text-green-400'
-                        : 'bg-gray-700/50 text-gray-400'
-                      }`}>
-                      {getIcon(repo.status)}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-white text-[15px]">{repo.name}</h3>
-                        {repo.isPrivate !== undefined && (
-                          <span title={repo.isPrivate ? "Private Repository" : "Public Repository"}>
-                            {repo.isPrivate ? (
-                              <FiLock size={12} className="text-gray-500" />
-                            ) : (
-                              <FiGlobe size={12} className="text-gray-500" />
-                            )}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-gray-500 text-xs mt-0.5">
-                        {repo.description || `Updated 2h ago`}
-                      </p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2 text-gray-300 text-sm">
-                    <span>{repo.technology || 'NextJS'}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-1.5 h-1.5 rounded-full ${repo.status === 'activo' ? 'bg-green-500' :
-                      repo.status === 'programando' ? 'bg-yellow-500' :
-                        repo.status === 'archivado' ? 'bg-gray-500' :
-                          'bg-gray-400'
-                      }`}></div>
-                    <span className={`text-xs font-medium uppercase tracking-wider ${repo.status === 'activo' ? 'text-green-400' :
-                      repo.status === 'programando' ? 'text-yellow-400' :
-                        repo.status === 'archivado' ? 'bg-gray-700 text-gray-400 px-2 py-0.5 rounded' :
-                          'text-gray-400'
-                      }`}>
-                      {repo.status}
-                    </span>
-                    {repo.status === 'activo' && repo.deployUrl && (
-                      <a
-                        href={repo.deployUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ml-2 text-green-400 hover:text-green-300 transition-colors"
-                        title="Ver sitio desplegado"
-                      >
-                        <FiExternalLink size={14} />
-                      </a>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {repo.deployUrl && (
-                      <a
-                        href={repo.deployUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-2 text-green-400 hover:text-green-300 hover:bg-gray-700 rounded-lg transition-colors"
-                        title="Ver deploy"
-                      >
-                        <FiExternalLink size={16} />
-                      </a>
-                    )}
-                    <button
-                      onClick={() => showCloneInfo(repo)}
-                      className="p-2 text-purple-400 hover:text-purple-300 hover:bg-gray-700 rounded-lg transition-colors"
-                      title="Clone info"
-                    >
-                      <FiGitBranch size={16} />
-                    </button>
-                    <a
-                      href={repo.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                      title="Ver repositorio"
-                    >
-                      <FiCode size={16} />
-                    </a>
-                    <button
-                      onClick={() => openModal(repo)}
-                      className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
-                    >
-                      <FiEdit2 size={16} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(repo.id)}
-                      className="p-2 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded-lg transition-colors"
-                    >
-                      <FiTrash2 size={16} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* Search */}
+      <div className="relative">
+        <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500 dark:text-slate-400" size={20} />
+        <input
+          type="text"
+          placeholder="Search repositories..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-12 pr-4 py-3 bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-purple-500 dark:focus:border-purple-500/50 focus:bg-slate-50 dark:focus:bg-white/10 transition-all"
+        />
+      </div>
 
-        {filteredRepos.length > 0 && (
-          <div className="px-6 py-4 border-t border-gray-800 flex items-center justify-between text-sm text-gray-500 bg-black/20">
-            <span>{filteredRepos.length} OF {repos.length} REPOSITORIES</span>
-            <div className="flex gap-2">
-              <button className="px-3 py-1.5 text-xs uppercase font-bold text-gray-400 hover:text-white transition-colors">PREV</button>
-              <button className="px-3 py-1.5 text-xs uppercase font-bold text-white transition-colors">NEXT</button>
-            </div>
+      {/* Repositories Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredRepos.length === 0 ? (
+          <div className="col-span-full text-center py-12 text-slate-600 dark:text-slate-400">
+            No repositories found
           </div>
+        ) : (
+          filteredRepos.map((repo) => (
+            <div
+              key={repo.id}
+              className="group bg-white dark:bg-white/5 backdrop-blur-sm border border-slate-200 dark:border-white/10 rounded-2xl p-6 hover:bg-slate-50 dark:hover:bg-white/10 hover:border-purple-500 dark:hover:border-purple-500/50 hover:shadow-xl hover:shadow-purple-500/20 transition-all duration-300"
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 shadow-lg">
+                    <FiGitBranch className="text-white" size={18} />
+                  </div>
+                  {repo.isPrivate !== undefined && (
+                    <span className="text-xs text-slate-600 dark:text-slate-400">
+                      {repo.isPrivate ? <FiLock size={12} /> : <FiGlobe size={12} />}
+                    </span>
+                  )}
+                </div>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => showCloneInfo(repo)}
+                    className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-slate-100 dark:hover:bg-white/10 transition-all"
+                    title="Clone"
+                  >
+                    <FiGitBranch size={16} />
+                  </button>
+                  <button
+                    onClick={() => openModal(repo)}
+                    className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-white/10 transition-all"
+                    title="Edit"
+                  >
+                    <FiEdit2 size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(repo.id)}
+                    className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-white/10 transition-all"
+                    title="Delete"
+                  >
+                    <FiTrash2 size={16} />
+                  </button>
+                </div>
+              </div>
+
+              <a
+                href={repo.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block mb-2"
+              >
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                  {repo.name}
+                </h3>
+              </a>
+
+              {repo.description && (
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 line-clamp-2">{repo.description}</p>
+              )}
+
+              <div className="flex items-center gap-3 text-xs">
+                {repo.technology && (
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: getLanguageColor(repo.technology) }}
+                    ></span>
+                    <span className="text-slate-700 dark:text-slate-400">{repo.technology}</span>
+                  </div>
+                )}
+                {repo.deployUrl && (
+                  <a
+                    href={repo.deployUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 transition-colors"
+                  >
+                    <FiExternalLink size={12} />
+                    <span>Live</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          ))
         )}
       </div>
 
-      {filteredRepos.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          No repositories found
-        </div>
-      )}
-
-      <Modal
-        isOpen={showModal}
-        onClose={closeModal}
-        title={editingRepo ? 'Edit Repository' : 'New Repository'}
-      >
+      {/* Modals */}
+      <Modal isOpen={showModal} onClose={closeModal} title={editingRepo ? 'Edit Repository' : 'New Repository'}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Name</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Name</label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+              className="w-full px-4 py-2.5 bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:border-purple-500 dark:focus:border-purple-500/50 transition-all"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">URL</label>
+            <label className="block text-sm font-medium text-slate-300 mb-2">URL</label>
             <input
               type="url"
               value={formData.url}
               onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all"
               required
             />
           </div>
-          {formData.status === 'activo' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Deploy URL (opcional)</label>
-              <input
-                type="url"
-                value={formData.deployUrl}
-                onChange={(e) => setFormData({ ...formData, deployUrl: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
-                placeholder="https://mi-app.vercel.app"
-              />
-            </div>
-          )}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Deploy URL</label>
+            <input
+              type="url"
+              value={formData.deployUrl}
+              onChange={(e) => setFormData({ ...formData, deployUrl: e.target.value })}
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Description</label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all"
               rows="3"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Technology</label>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Technology</label>
             <input
               type="text"
               value={formData.technology}
               onChange={(e) => setFormData({ ...formData, technology: e.target.value })}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
-              placeholder="NestJS, React, etc."
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Tags (comma separated)</label>
-            <input
-              type="text"
-              value={formData.tags}
-              onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
-              placeholder="frontend, backend, personal"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Status</label>
-            <select
-              value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
-            >
-              <option value="activo">Activo</option>
-              <option value="programando">Programando</option>
-              <option value="archivado">Archivado</option>
-            </select>
-          </div>
-          <div className="flex gap-2 pt-4">
+          <div className="flex gap-3 pt-4">
             <button
               type="submit"
-              className="flex-1 bg-primary-600 hover:bg-primary-500 text-white py-2 rounded-lg transition-colors font-medium"
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all"
             >
               {editingRepo ? 'Update' : 'Create'}
             </button>
             <button
               type="button"
               onClick={closeModal}
-              className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors font-medium"
+              className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white rounded-xl font-medium transition-all"
             >
               Cancel
             </button>
@@ -476,37 +375,25 @@ export default function Repositories() {
         </form>
       </Modal>
 
-      {/* GitHub Repository Modal */}
-      <Modal
-        isOpen={showGitHubModal}
-        onClose={() => setShowGitHubModal(false)}
-        title="Create GitHub Repository"
-      >
+      <Modal isOpen={showGitHubModal} onClose={() => setShowGitHubModal(false)} title="Create GitHub Repository">
         <form onSubmit={handleGitHubSubmit} className="space-y-4">
-          <div className="bg-blue-900/20 border border-blue-700 rounded-lg p-3 mb-4">
-            <p className="text-blue-300 text-sm">
-              ℹ️ Si es la primera vez que usas esta función, necesitarás reconectar tu cuenta de GitHub para obtener los permisos necesarios.
-            </p>
-          </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Repository Name *</label>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Repository Name</label>
             <input
               type="text"
               value={githubFormData.name}
               onChange={(e) => setGithubFormData({ ...githubFormData, name: e.target.value })}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
-              placeholder="my-awesome-project"
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Description</label>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Description</label>
             <textarea
               value={githubFormData.description}
               onChange={(e) => setGithubFormData({ ...githubFormData, description: e.target.value })}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all"
               rows="3"
-              placeholder="A brief description of your repository"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -515,35 +402,21 @@ export default function Repositories() {
               id="isPrivate"
               checked={githubFormData.isPrivate}
               onChange={(e) => setGithubFormData({ ...githubFormData, isPrivate: e.target.checked })}
-              className="w-4 h-4 text-primary-600 bg-gray-700 border-gray-600 rounded focus:ring-primary-500"
+              className="w-4 h-4 rounded"
             />
-            <label htmlFor="isPrivate" className="text-sm text-gray-300">
-              Private repository (recommended)
-            </label>
+            <label htmlFor="isPrivate" className="text-sm text-slate-700 dark:text-slate-300">Private repository</label>
           </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="autoInit"
-              checked={githubFormData.autoInit}
-              onChange={(e) => setGithubFormData({ ...githubFormData, autoInit: e.target.checked })}
-              className="w-4 h-4 text-primary-600 bg-gray-700 border-gray-600 rounded focus:ring-primary-500"
-            />
-            <label htmlFor="autoInit" className="text-sm text-gray-300">
-              Initialize with README
-            </label>
-          </div>
-          <div className="flex gap-2 pt-4">
+          <div className="flex gap-3 pt-4">
             <button
               type="submit"
-              className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white py-2 rounded-lg transition-all font-medium"
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all"
             >
-              Create on GitHub
+              Create
             </button>
             <button
               type="button"
               onClick={() => setShowGitHubModal(false)}
-              className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors font-medium"
+              className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white rounded-xl font-medium transition-all"
             >
               Cancel
             </button>
@@ -551,88 +424,49 @@ export default function Repositories() {
         </form>
       </Modal>
 
-      {/* Clone Info Modal */}
-      <Modal
-        isOpen={showCloneInfoModal}
-        onClose={() => setShowCloneInfoModal(false)}
-        title="🎉 Repository Created Successfully!"
-      >
+      <Modal isOpen={showCloneInfoModal} onClose={() => setShowCloneInfoModal(false)} title="Clone Repository">
         {cloneInfo && (
           <div className="space-y-4">
-            <div className="bg-green-900/20 border border-green-700 rounded-lg p-4">
-              <h3 className="text-green-400 font-semibold mb-2">✓ Repository created on GitHub</h3>
-              <p className="text-gray-300 text-sm">
-                Your repository <span className="font-mono text-white">{cloneInfo.name}</span> has been created successfully!
-              </p>
-            </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Clone with HTTPS</label>
+              <label className="block text-sm font-medium text-slate-300 mb-2">HTTPS</label>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={cloneInfo.cloneUrls.https}
                   readOnly
-                  className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white font-mono text-sm"
+                  className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white font-mono text-sm"
                 />
                 <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(cloneInfo.cloneUrls.https);
-                    alert('HTTPS URL copied to clipboard!');
-                  }}
-                  className="px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition-colors"
+                  onClick={() => navigator.clipboard.writeText(cloneInfo.cloneUrls.https)}
+                  className="px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-medium transition-all"
                 >
                   Copy
                 </button>
               </div>
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Clone with SSH</label>
+              <label className="block text-sm font-medium text-slate-300 mb-2">SSH</label>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={cloneInfo.cloneUrls.ssh}
                   readOnly
-                  className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white font-mono text-sm"
+                  className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white font-mono text-sm"
                 />
                 <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(cloneInfo.cloneUrls.ssh);
-                    alert('SSH URL copied to clipboard!');
-                  }}
-                  className="px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg transition-colors"
+                  onClick={() => navigator.clipboard.writeText(cloneInfo.cloneUrls.ssh)}
+                  className="px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-medium transition-all"
                 >
                   Copy
                 </button>
               </div>
             </div>
-
-            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-              <p className="text-gray-300 text-sm mb-2">Quick start commands:</p>
-              <pre className="bg-gray-900 p-3 rounded text-xs text-gray-300 overflow-x-auto">
-                {`git clone ${cloneInfo.cloneUrls.https}
-cd ${cloneInfo.name}
-# Start coding! 🚀`}
-              </pre>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <a
-                href={cloneInfo.githubUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors font-medium text-center"
-              >
-                View on GitHub
-              </a>
-              <button
-                onClick={() => setShowCloneInfoModal(false)}
-                className="flex-1 bg-primary-600 hover:bg-primary-500 text-white py-2 rounded-lg transition-colors font-medium"
-              >
-                Done
-              </button>
-            </div>
+            <button
+              onClick={() => setShowCloneInfoModal(false)}
+              className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all"
+            >
+              Done
+            </button>
           </div>
         )}
       </Modal>

@@ -54,6 +54,14 @@ router.post('/', async (req, res) => {
   try {
     const { name, description, parentId } = req.body;
 
+    console.log('📁 Creating folder:', { name, description, parentId, userId: req.userId });
+
+    // Validate required fields
+    if (!name || name.trim() === '') {
+      console.error('❌ Validation error: name is required');
+      return res.status(400).json({ error: 'El nombre de la carpeta es requerido' });
+    }
+
     // Normalize parentId: convert empty string to null
     const normalizedParentId = parentId && parentId.trim() !== '' ? parentId : null;
 
@@ -67,7 +75,8 @@ router.post('/', async (req, res) => {
       });
 
       if (!parent) {
-        return res.status(404).json({ error: 'Parent folder not found' });
+        console.error('❌ Parent folder not found:', normalizedParentId);
+        return res.status(404).json({ error: 'Carpeta padre no encontrada' });
       }
     }
 
@@ -84,9 +93,19 @@ router.post('/', async (req, res) => {
       },
     });
 
+    console.log('✅ Folder created successfully:', folder.id);
     res.status(201).json(folder);
   } catch (error) {
-    res.status(500).json({ error: 'Error creating folder' });
+    console.error('❌ Error creating folder:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      meta: error.meta,
+    });
+    res.status(500).json({
+      error: 'Error al crear la carpeta',
+      details: error.message
+    });
   }
 });
 
