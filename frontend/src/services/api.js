@@ -61,8 +61,14 @@ export const projects = {
   removeRepository: (id, repoId) => api.delete(`/projects/${id}/repositories/${repoId}`),
   addAIResource: (id, aiResourceId) => api.post(`/projects/${id}/ai-resources`, { aiResourceId }),
   removeAIResource: (id, aiResourceId) => api.delete(`/projects/${id}/ai-resources/${aiResourceId}`),
+  addLanguage: (id, languageId) => api.post(`/projects/${id}/languages`, { languageId }),
+  removeLanguage: (id, languageId) => api.delete(`/projects/${id}/languages/${languageId}`),
   addLink: (id, data) => api.post(`/projects/${id}/links`, data),
   removeLink: (id, linkId) => api.delete(`/projects/${id}/links/${linkId}`),
+  share: (id, email, role) => api.post(`/projects/${id}/share`, { email, role }),
+  getShares: (id) => api.get(`/projects/${id}/shares`),
+  updateShareRole: (id, userId, role) => api.put(`/projects/${id}/shares/${userId}`, { role }),
+  removeShare: (id, userId) => api.delete(`/projects/${id}/shares/${userId}`),
 };
 
 // Search
@@ -78,6 +84,17 @@ export const languages = {
   create: (data) => api.post('/languages', data),
   update: (id, data) => api.put(`/languages/${id}`, data),
   delete: (id) => api.delete(`/languages/${id}`),
+};
+
+// Notifications
+export const notifications = {
+  getAll: () => api.get('/notifications'),
+  getUnreadCount: () => api.get('/notifications/unread-count'),
+  markAsRead: (id) => api.put(`/notifications/${id}/read`),
+  markAllAsRead: () => api.put('/notifications/mark-all-read'),
+  delete: (id) => api.delete(`/notifications/${id}`),
+  accept: (id) => api.post(`/notifications/${id}/accept`),
+  reject: (id) => api.post(`/notifications/${id}/reject`),
 };
 
 export default api;

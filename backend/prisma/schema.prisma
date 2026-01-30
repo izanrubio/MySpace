@@ -23,10 +23,12 @@ model User {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  repos     Repository[]
-  folders   Folder[]
-  projects  Project[]
-  languages Language[]
+  repos          Repository[]
+  folders        Folder[]
+  projects       Project[]
+  languages      Language[]
+  sharedProjects ProjectShare[]
+  notifications  Notification[]
 }
 
 // Repositorios Git
@@ -99,12 +101,14 @@ model Project {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  userId      String
-  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  repos       ProjectRepository[]
-  aiResources ProjectAIResource[]
-  links       ProjectLink[]
-  languages   ProjectLanguage[]
+  userId        String
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repos         ProjectRepository[]
+  aiResources   ProjectAIResource[]
+  links         ProjectLink[]
+  languages     ProjectLanguage[]
+  sharedWith    ProjectShare[]      @relation("SharedProjects")
+  notifications Notification[]
 
   @@index([userId])
 }
@@ -183,3 +187,37 @@ model Language {
   @@index([userId])
 }
 
+// Proyectos compartidos con otros usuarios
+model ProjectShare {
+  id        String   @id @default(uuid())
+  projectId String
+  userId    String
+  role      String   @default("viewer") // viewer, editor
+  createdAt DateTime @default(now())
+
+  project Project @relation("SharedProjects", fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([projectId])
+  @@index([userId])
+}
+
+// Notificaciones para los usuarios
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String // project_share, project_invite, etc.
+  title     String
+  message   String
+  data      Json? // Datos adicionales (projectId, etc.)
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String?
+
+  @@index([userId])
+  @@index([read])
+}

@@ -10,6 +10,7 @@ import folderRoutes from './routes/folders.js';
 import projectRoutes from './routes/projects.js';
 import searchRoutes from './routes/search.js';
 import languageRoutes from './routes/languages.js';
+import notificationRoutes from './routes/notifications.js';
 
 dotenv.config();
 
@@ -49,6 +50,7 @@ app.use('/api/folders', folderRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/languages', languageRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

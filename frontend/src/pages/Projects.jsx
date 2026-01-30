@@ -8,17 +8,19 @@ import {
   FiLink,
   FiGitBranch,
   FiCpu,
-  FiSettings,
-  FiFolder,
   FiExternalLink,
-  FiSearch
+  FiSearch,
+  FiUsers,
+  FiFolder
 } from 'react-icons/fi';
 import { projects, repositories, aiResources } from '../services/api';
 import Modal from '../components/Modal';
 import ReactMarkdown from 'react-markdown';
+import { useAuth } from '../context/AuthContext';
 
 export default function Projects() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [projectList, setProjectList] = useState([]);
   const [repoList, setRepoList] = useState([]);
   const [aiList, setAiList] = useState([]);
@@ -27,7 +29,6 @@ export default function Projects() {
   // States for Modals
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
-  const [managingProject, setManagingProject] = useState(null); // Nuevo modal de gestión
 
   const [editingProject, setEditingProject] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -85,7 +86,6 @@ export default function Projects() {
         await projects.delete(id);
         const newProjects = projectList.filter(p => p.id !== id);
         setProjectList(newProjects);
-        if (managingProject?.id === id) setManagingProject(null);
       } catch (error) {
         console.error('Error deleting project:', error);
         loadData(); // Reload to be safe
@@ -93,74 +93,7 @@ export default function Projects() {
     }
   };
 
-  // Resource Management Handlers
-  const handleAddRepo = async (projectId, repoId) => {
-    try {
-      await projects.addRepository(projectId, repoId);
-      refreshCurrentProject(projectId);
-    } catch (error) {
-      console.error('Error adding repo:', error);
-    }
-  };
 
-  const handleRemoveRepo = async (projectId, repoId) => {
-    try {
-      await projects.removeRepository(projectId, repoId);
-      refreshCurrentProject(projectId);
-    } catch (error) {
-      console.error('Error removing repo:', error);
-    }
-  };
-
-  const handleAddAI = async (projectId, aiId) => {
-    try {
-      await projects.addAIResource(projectId, aiId);
-      refreshCurrentProject(projectId);
-    } catch (error) {
-      console.error('Error adding AI:', error);
-    }
-  };
-
-  const handleRemoveAI = async (projectId, aiId) => {
-    try {
-      await projects.removeAIResource(projectId, aiId);
-      refreshCurrentProject(projectId);
-    } catch (error) {
-      console.error('Error removing AI:', error);
-    }
-  };
-
-  const handleAddLink = async (e) => {
-    e.preventDefault();
-    try {
-      await projects.addLink(managingProject.id, linkForm);
-      refreshCurrentProject(managingProject.id);
-      closeLinkModal();
-    } catch (error) {
-      console.error('Error adding link:', error);
-    }
-  };
-
-  const handleRemoveLink = async (projectId, linkId) => {
-    try {
-      await projects.removeLink(projectId, linkId);
-      refreshCurrentProject(projectId);
-    } catch (error) {
-      console.error('Error removing link:', error);
-    }
-  };
-
-  // Helper to refresh data without full page reload flicker, focusing on the managed project
-  const refreshCurrentProject = async (projectId) => {
-    // We reload everything to keep sync, but we could optimize to fetch only one project
-    // For simplicity, re-fetching all projects
-    const res = await projects.getAll();
-    setProjectList(res.data);
-
-    // Update the currently managed project object
-    const updated = res.data.find(p => p.id === projectId);
-    if (updated) setManagingProject(updated);
-  };
 
   const openProjectModal = (project = null) => {
     if (project) {
@@ -191,16 +124,11 @@ export default function Projects() {
     setShowLinkModal(false);
   };
 
-  const getAvailableRepos = (project) => {
-    if (!project) return [];
-    const projectRepoIds = project.repos?.map((pr) => pr.repository?.id) || [];
-    return repoList.filter((r) => !projectRepoIds.includes(r.id));
-  };
-
-  const getAvailableAIs = (project) => {
-    if (!project) return [];
-    const projectAIIds = project.aiResources?.map((pa) => pa.aiResource?.id) || [];
-    return aiList.filter((ai) => !projectAIIds.includes(ai.id));
+  const handleAddLink = async (e) => {
+    e.preventDefault();
+    // Esta función se puede implementar más tarde
+    console.log('Add link:', linkForm);
+    closeLinkModal();
   };
 
   const filteredProjects = projectList.filter(project =>
@@ -263,26 +191,50 @@ export default function Projects() {
                   <FiFolder className="text-white" size={20} />
                 </div>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => openProjectModal(project)}
-                    className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-white/10 transition-all"
-                    title="Edit"
-                  >
-                    <FiEdit2 size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteProject(project.id)}
-                    className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-white/10 transition-all"
-                    title="Delete"
-                  >
-                    <FiTrash2 size={16} />
-                  </button>
+                  {project.user && project.user.id === user?.id && (
+                    <>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openProjectModal(project);
+                        }}
+                        className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-white/10 transition-all"
+                        title="Edit"
+                      >
+                        <FiEdit2 size={16} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteProject(project.id);
+                        }}
+                        className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-white/10 transition-all"
+                        title="Delete"
+                      >
+                        <FiTrash2 size={16} />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2 group-hover:text-purple-500 transition-colors">
-                {project.name}
-              </h3>
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-purple-500 transition-colors">
+                  {project.name}
+                </h3>
+                {project.user && project.user.id !== user?.id && (
+                  <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                    <FiUsers className="text-blue-500" size={12} />
+                    <span className="text-xs font-medium text-blue-500">Compartido</span>
+                  </div>
+                )}
+              </div>
+
+              {project.user && project.user.id !== user?.id && (
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                  Propietario: {project.user.name || project.user.email}
+                </p>
+              )}
 
               {project.description && (
                 <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 line-clamp-2 flex-grow">
@@ -309,12 +261,6 @@ export default function Projects() {
                 </div>
               </div>
 
-              <button
-                onClick={() => setManagingProject(project)}
-                className="w-full py-2.5 bg-slate-100 dark:bg-white/5 hover:bg-purple-600 hover:text-white dark:hover:bg-purple-600 border border-slate-200 dark:border-white/10 hover:border-purple-600 rounded-xl text-slate-900 dark:text-white font-medium transition-all flex items-center justify-center gap-2"
-              >
-                <FiSettings size={16} /> Manage Resources
-              </button>
             </div>
           ))
         )}
@@ -381,144 +327,6 @@ export default function Projects() {
             </button>
           </div>
         </form>
-      </Modal>
-
-      {/* Manage Resources Modal (The "Accordion" Content) */}
-      <Modal
-        isOpen={!!managingProject}
-        onClose={() => setManagingProject(null)}
-        title={`Manage: ${managingProject?.name}`}
-      >
-        <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
-          {/* Repositories Section */}
-          <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-white font-medium flex items-center gap-2">
-                <FiGitBranch className="text-purple-400" /> Repositories
-              </h4>
-              {getAvailableRepos(managingProject).length > 0 && (
-                <select
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      handleAddRepo(managingProject.id, e.target.value);
-                      e.target.value = '';
-                    }
-                  }}
-                  className="text-sm px-3 py-1.5 bg-gray-800 border border-gray-600 rounded-lg text-white focus:border-purple-500 focus:outline-none"
-                >
-                  <option value="">+ Add Repository</option>
-                  {getAvailableRepos(managingProject).map((repo) => (
-                    <option key={repo.id} value={repo.id}>
-                      {repo.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-            <div className="space-y-2">
-              {managingProject?.repos?.length === 0 ? (
-                <p className="text-gray-500 text-sm italic">No linked repositories.</p>
-              ) : (
-                managingProject?.repos?.map((pr) => (
-                  <div key={pr.id} className="flex items-center justify-between bg-black/20 p-3 rounded-lg hover:bg-black/30 transition-colors">
-                    <div className="flex flex-col">
-                      <span className="text-white font-medium">{pr.repository.name}</span>
-                      <a href={pr.repository.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:underline truncate max-w-[200px]">{pr.repository.url}</a>
-                    </div>
-                    <button onClick={() => handleRemoveRepo(managingProject.id, pr.repository.id)} className="text-gray-400 hover:text-red-400 p-2"><FiTrash2 /></button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* AI Resources Section */}
-          <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-white font-medium flex items-center gap-2">
-                <FiCpu className="text-pink-400" /> AI Resources
-              </h4>
-              {getAvailableAIs(managingProject).length > 0 && (
-                <select
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      handleAddAI(managingProject.id, e.target.value);
-                      e.target.value = '';
-                    }
-                  }}
-                  className="text-sm px-3 py-1.5 bg-gray-800 border border-gray-600 rounded-lg text-white focus:border-purple-500 focus:outline-none"
-                >
-                  <option value="">+ Add Resource</option>
-                  {getAvailableAIs(managingProject).map((ai) => (
-                    <option key={ai.id} value={ai.id}>
-                      {ai.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-            <div className="space-y-2">
-              {managingProject?.aiResources?.length === 0 ? (
-                <p className="text-gray-500 text-sm italic">No linked resources.</p>
-              ) : (
-                managingProject?.aiResources?.map((pai) => (
-                  <div key={pai.id} className="flex items-center justify-between bg-black/20 p-3 rounded-lg hover:bg-black/30 transition-colors">
-                    <div className="flex flex-col">
-                      <span className="text-white font-medium">{pai.aiResource.name}</span>
-                      <a href={pai.aiResource.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:underline truncate max-w-[200px]">{pai.aiResource.url}</a>
-                    </div>
-                    <button onClick={() => handleRemoveAI(managingProject.id, pai.aiResource.id)} className="text-gray-400 hover:text-red-400 p-2"><FiTrash2 /></button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Links Section */}
-          <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-white font-medium flex items-center gap-2">
-                <FiLink className="text-blue-400" /> External Links
-              </h4>
-              <button
-                onClick={openLinkModal}
-                className="text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors flex items-center gap-1"
-              >
-                <FiPlus size={12} /> New Link
-              </button>
-            </div>
-            <div className="space-y-2">
-              {managingProject?.links?.length === 0 ? (
-                <p className="text-gray-500 text-sm italic">No links added.</p>
-              ) : (
-                managingProject?.links?.map((link) => (
-                  <div key={link.id} className="flex items-center justify-between bg-black/20 p-3 rounded-lg hover:bg-black/30 transition-colors">
-                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-400 hover:text-blue-300">
-                      <FiExternalLink size={14} />
-                      <span className="font-medium underline">{link.title}</span>
-                    </a>
-                    <button onClick={() => handleRemoveLink(managingProject.id, link.id)} className="text-gray-400 hover:text-red-400 p-2"><FiTrash2 /></button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Notes Preview Section */}
-          {managingProject?.notes && (
-            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-              <h4 className="text-white font-medium flex items-center gap-2 mb-3">
-                <FiFileText className="text-yellow-400" /> Notes
-              </h4>
-              <div className="bg-black/20 p-4 rounded-lg prose prose-invert prose-sm max-w-none">
-                <ReactMarkdown>{managingProject.notes}</ReactMarkdown>
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="mt-6 pt-4 border-t border-white/10 flex justify-end">
-          <button onClick={() => setManagingProject(null)} className="px-6 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors">Close</button>
-        </div>
       </Modal>
 
       {/* Add Link Modal */}
