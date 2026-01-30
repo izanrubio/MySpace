@@ -12,16 +12,16 @@
     ],
     "rewrites": [
         {
-            "source": "/api/auth/github/callback",
-            "destination": "backend/src/index.js"
-        },
-        {
             "source": "/api/(.*)",
             "destination": "backend/src/index.js"
         },
         {
             "source": "/health",
             "destination": "backend/src/index.js"
+        },
+        {
+            "source": "/assets/(.*)",
+            "destination": "frontend/assets/$1"
         },
         {
             "source": "/(.*)",
