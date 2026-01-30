@@ -42,6 +42,10 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.set('passport', passport);
 
+app.get('/', (req, res) => {
+  res.send('Welcome to MySpace API! Go to /health to check status.');
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/repositories', repoRoutes);
