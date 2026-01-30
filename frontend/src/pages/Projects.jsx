@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   FiPlus,
   FiEdit2,
@@ -17,6 +18,7 @@ import Modal from '../components/Modal';
 import ReactMarkdown from 'react-markdown';
 
 export default function Projects() {
+  const navigate = useNavigate();
   const [projectList, setProjectList] = useState([]);
   const [repoList, setRepoList] = useState([]);
   const [aiList, setAiList] = useState([]);
@@ -253,7 +255,8 @@ export default function Projects() {
           filteredProjects.map((project) => (
             <div
               key={project.id}
-              className="group bg-white dark:bg-white/5 backdrop-blur-sm border border-slate-200 dark:border-white/10 rounded-2xl p-6 hover:bg-slate-50 dark:hover:bg-white/10 hover:border-purple-500 dark:hover:border-purple-500/50 hover:shadow-xl hover:shadow-purple-500/20 transition-all duration-300 flex flex-col h-full"
+              onDoubleClick={() => navigate(`/projects/${project.id}`)}
+              className="group bg-white dark:bg-white/5 backdrop-blur-sm border border-slate-200 dark:border-white/10 rounded-2xl p-6 hover:bg-slate-50 dark:hover:bg-white/10 hover:border-purple-500 dark:hover:border-purple-500/50 hover:shadow-xl hover:shadow-purple-500/20 transition-all duration-300 flex flex-col h-full cursor-pointer"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="p-2 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 shadow-lg">
