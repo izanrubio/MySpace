@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { FiPlus, FiEdit2, FiTrash2, FiFolder, FiExternalLink, FiCpu, FiSearch, FiHome, FiMoreVertical, FiGrid, FiList } from 'react-icons/fi';
 import { folders, aiResources } from '../services/api';
 import Modal from '../components/Modal';
+import AlertModal from '../components/AlertModal';
+import ConfirmModal from '../components/ConfirmModal';
 
 export default function AIResources() {
   const [folderList, setFolderList] = useState([]);
@@ -19,6 +21,8 @@ export default function AIResources() {
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [movingResource, setMovingResource] = useState(null);
   const contextMenuRef = useRef(null);
+  const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '', type: 'info' });
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   const [folderForm, setFolderForm] = useState({
     name: '',
@@ -81,7 +85,12 @@ export default function AIResources() {
       closeFolderModal();
     } catch (error) {
       console.error('Error saving folder:', error);
-      alert('Error al guardar la carpeta: ' + (error.response?.data?.error || error.message));
+      setAlertModal({ 
+        isOpen: true, 
+        title: 'Error', 
+        message: 'Error al guardar la carpeta: ' + (error.response?.data?.error || error.message), 
+        type: 'error' 
+      });
     }
   };
 
@@ -102,32 +111,47 @@ export default function AIResources() {
       closeAIModal();
     } catch (error) {
       console.error('Error saving AI resource:', error);
-      alert('Error al guardar el recurso IA: ' + (error.response?.data?.error || error.message));
+      setAlertModal({ 
+        isOpen: true, 
+        title: 'Error', 
+        message: 'Error al guardar el recurso IA: ' + (error.response?.data?.error || error.message), 
+        type: 'error' 
+      });
     }
   };
 
-  const handleDeleteFolder = async (id) => {
-    if (confirm('¿Eliminar esta carpeta y su contenido?')) {
-      try {
-        await folders.delete(id);
-        loadData();
-        setContextMenu(null);
-      } catch (error) {
-        console.error('Error deleting folder:', error);
+  const handleDeleteFolder = (id) => {
+    setConfirmModal({
+      isOpen: true,
+      title: '¿Eliminar carpeta?',
+      message: '¿Estás seguro que quieres eliminar esta carpeta y todo su contenido? Esta acción no se puede deshacer.',
+      onConfirm: async () => {
+        try {
+          await folders.delete(id);
+          loadData();
+          setContextMenu(null);
+        } catch (error) {
+          console.error('Error deleting folder:', error);
+        }
       }
-    }
+    });
   };
 
-  const handleDeleteAI = async (id) => {
-    if (confirm('¿Eliminar este recurso IA?')) {
-      try {
-        await aiResources.delete(id);
-        loadData();
-        setContextMenu(null);
-      } catch (error) {
-        console.error('Error deleting AI resource:', error);
+  const handleDeleteAI = (id) => {
+    setConfirmModal({
+      isOpen: true,
+      title: '¿Eliminar recurso IA?',
+      message: '¿Estás seguro que quieres eliminar este recurso IA? Esta acción no se puede deshacer.',
+      onConfirm: async () => {
+        try {
+          await aiResources.delete(id);
+          loadData();
+          setContextMenu(null);
+        } catch (error) {
+          console.error('Error deleting AI resource:', error);
+        }
       }
-    }
+    });
   };
 
   // Drag and Drop Handlers
@@ -164,7 +188,7 @@ export default function AIResources() {
       loadData();
     } catch (error) {
       console.error('Error moving resource:', error);
-      alert('Error al mover el recurso');
+      setAlertModal({ isOpen: true, title: 'Error', message: 'Error al mover el recurso', type: 'error' });
     }
   };
 
@@ -177,7 +201,7 @@ export default function AIResources() {
       setMovingResource(null);
     } catch (error) {
       console.error('Error moving resource:', error);
-      alert('Error al mover el recurso');
+      setAlertModal({ isOpen: true, title: 'Error', message: 'Error al mover el recurso', type: 'error' });
     }
   };
 
@@ -836,6 +860,24 @@ export default function AIResources() {
           ))}
         </div>
       </Modal>
+
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+      />
     </div >
   );
 }

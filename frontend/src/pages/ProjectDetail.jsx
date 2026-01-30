@@ -19,6 +19,8 @@ import {
 } from 'react-icons/fi';
 import { projects, repositories, aiResources, languages } from '../services/api';
 import Modal from '../components/Modal';
+import AlertModal from '../components/AlertModal';
+import ConfirmModal from '../components/ConfirmModal';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../context/AuthContext';
 
@@ -34,6 +36,8 @@ export default function ProjectDetail() {
     const [repoList, setRepoList] = useState([]);
     const [aiList, setAiList] = useState([]);
     const [languageList, setLanguageList] = useState([]);
+    const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '', type: 'info' });
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
     const [projectForm, setProjectForm] = useState({
         name: '',
@@ -99,15 +103,20 @@ export default function ProjectDetail() {
         }
     };
 
-    const handleDeleteProject = async () => {
-        if (confirm('¿Seguro que quieres eliminar este proyecto?')) {
-            try {
-                await projects.delete(id);
-                navigate('/projects');
-            } catch (error) {
-                console.error('Error deleting project:', error);
+    const handleDeleteProject = () => {
+        setConfirmModal({
+            isOpen: true,
+            title: '¿Eliminar proyecto?',
+            message: '¿Estás seguro que quieres eliminar este proyecto? Esta acción no se puede deshacer y se perderá toda la información asociada.',
+            onConfirm: async () => {
+                try {
+                    await projects.delete(id);
+                    navigate('/projects');
+                } catch (error) {
+                    console.error('Error deleting project:', error);
+                }
             }
-        }
+        });
     };
 
     const handleAddRepo = async (repoId) => {
@@ -189,12 +198,12 @@ export default function ProjectDetail() {
         e.preventDefault();
         try {
             await projects.share(id, shareForm.email, shareForm.role);
-            alert('Invitación enviada correctamente');
+            setAlertModal({ isOpen: true, title: 'Éxito', message: 'Invitación enviada correctamente', type: 'success' });
             setShareForm({ email: '', role: 'viewer' });
             loadProject(); // Recargar para actualizar la lista de compartidos
         } catch (error) {
             console.error('Error sharing project:', error);
-            alert(error.response?.data?.error || 'Error al compartir el proyecto');
+            setAlertModal({ isOpen: true, title: 'Error', message: error.response?.data?.error || 'Error al compartir el proyecto', type: 'error' });
         }
     };
 
@@ -204,20 +213,25 @@ export default function ProjectDetail() {
             loadProject(); // Recargar para ver el cambio
         } catch (error) {
             console.error('Error updating user role:', error);
-            alert('Error al actualizar el rol');
+            setAlertModal({ isOpen: true, title: 'Error', message: 'Error al actualizar el rol', type: 'error' });
         }
     };
 
-    const handleRemoveUserAccess = async (userId) => {
-        if (confirm('¿Seguro que quieres remover el acceso de este usuario?')) {
-            try {
-                await projects.removeShare(id, userId);
-                loadProject(); // Recargar para ver el cambio
-            } catch (error) {
-                console.error('Error removing user access:', error);
-                alert('Error al remover el acceso');
+    const handleRemoveUserAccess = (userId) => {
+        setConfirmModal({
+            isOpen: true,
+            title: '¿Remover acceso?',
+            message: '¿Estás seguro que quieres remover el acceso de este usuario al proyecto?',
+            onConfirm: async () => {
+                try {
+                    await projects.removeShare(id, userId);
+                    loadProject(); // Recargar para ver el cambio
+                } catch (error) {
+                    console.error('Error removing user access:', error);
+                    setAlertModal({ isOpen: true, title: 'Error', message: 'Error al remover el acceso', type: 'error' });
+                }
             }
-        }
+        });
     };
 
     const getAvailableRepos = () => {
@@ -800,6 +814,24 @@ export default function ProjectDetail() {
                     </div>
                 )}
             </Modal>
+
+            <AlertModal
+                isOpen={alertModal.isOpen}
+                onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+                title={alertModal.title}
+                message={alertModal.message}
+                type={alertModal.type}
+            />
+
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                confirmText="Eliminar"
+                cancelText="Cancelar"
+            />
         </div>
     );
 }

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { FiPlus, FiEdit2, FiTrash2, FiCode, FiLayers, FiSearch } from 'react-icons/fi';
 import { languages, projects } from '../services/api';
 import Modal from '../components/Modal';
+import AlertModal from '../components/AlertModal';
+import ConfirmModal from '../components/ConfirmModal';
 
 export default function Languages() {
     const [languageList, setLanguageList] = useState([]);
@@ -10,6 +12,8 @@ export default function Languages() {
     const [showModal, setShowModal] = useState(false);
     const [editingLanguage, setEditingLanguage] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '', type: 'info' });
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
     const [languageForm, setLanguageForm] = useState({
         name: '',
@@ -60,19 +64,29 @@ export default function Languages() {
             closeModal();
         } catch (error) {
             console.error('Error saving language:', error);
-            alert('Error al guardar el lenguaje: ' + (error.response?.data?.error || error.message));
+            setAlertModal({ 
+                isOpen: true, 
+                title: 'Error', 
+                message: 'Error al guardar el lenguaje: ' + (error.response?.data?.error || error.message), 
+                type: 'error' 
+            });
         }
     };
 
-    const handleDelete = async (id) => {
-        if (confirm('¿Seguro que quieres eliminar este lenguaje?')) {
-            try {
-                await languages.delete(id);
-                loadData();
-            } catch (error) {
-                console.error('Error deleting language:', error);
+    const handleDelete = (id) => {
+        setConfirmModal({
+            isOpen: true,
+            title: '¿Eliminar lenguaje?',
+            message: '¿Estás seguro que quieres eliminar este lenguaje? Esta acción no se puede deshacer.',
+            onConfirm: async () => {
+                try {
+                    await languages.delete(id);
+                    loadData();
+                } catch (error) {
+                    console.error('Error deleting language:', error);
+                }
             }
-        }
+        });
     };
 
     const openModal = (language = null) => {
@@ -331,6 +345,24 @@ export default function Languages() {
                     </div>
                 </form>
             </Modal>
+
+            <AlertModal
+                isOpen={alertModal.isOpen}
+                onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+                title={alertModal.title}
+                message={alertModal.message}
+                type={alertModal.type}
+            />
+
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                confirmText="Eliminar"
+                cancelText="Cancelar"
+            />
         </div>
     );
 }

@@ -3,6 +3,7 @@ import { FiBell, FiCheck, FiX, FiTrash2, FiFolder } from 'react-icons/fi';
 import { notifications as notificationsAPI } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
+import AlertModal from './AlertModal';
 
 export default function NotificationBell() {
     const navigate = useNavigate();
@@ -12,6 +13,7 @@ export default function NotificationBell() {
     const [showDropdown, setShowDropdown] = useState(false);
     const [loading, setLoading] = useState(false);
     const dropdownRef = useRef(null);
+    const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '', type: 'info' });
 
     useEffect(() => {
         loadUnreadCount();
@@ -70,7 +72,12 @@ export default function NotificationBell() {
             }
         } catch (error) {
             console.error('Error accepting invitation:', error);
-            alert(error.response?.data?.error || 'Error al aceptar la invitación');
+            setAlertModal({ 
+                isOpen: true, 
+                title: 'Error', 
+                message: error.response?.data?.error || 'Error al aceptar la invitación', 
+                type: 'error' 
+            });
         }
     };
 
@@ -301,6 +308,14 @@ export default function NotificationBell() {
                     </div>
                 </div>
             )}
+
+            <AlertModal
+                isOpen={alertModal.isOpen}
+                onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+                title={alertModal.title}
+                message={alertModal.message}
+                type={alertModal.type}
+            />
         </div>
     );
 }

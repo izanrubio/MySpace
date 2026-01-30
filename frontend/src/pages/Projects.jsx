@@ -15,6 +15,7 @@ import {
 } from 'react-icons/fi';
 import { projects, repositories, aiResources } from '../services/api';
 import Modal from '../components/Modal';
+import ConfirmModal from '../components/ConfirmModal';
 import ReactMarkdown from 'react-markdown';
 import { useAuth } from '../context/AuthContext';
 
@@ -32,6 +33,7 @@ export default function Projects() {
 
   const [editingProject, setEditingProject] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   const [projectForm, setProjectForm] = useState({
     name: '',
@@ -80,20 +82,22 @@ export default function Projects() {
     }
   };
 
-  const handleDeleteProject = async (id) => {
-    if (confirm('¿Seguro que quieres eliminar este proyecto?')) {
-      try {
-        await projects.delete(id);
-        const newProjects = projectList.filter(p => p.id !== id);
-        setProjectList(newProjects);
-      } catch (error) {
-        console.error('Error deleting project:', error);
-        loadData(); // Reload to be safe
+  const handleDeleteProject = (id) => {
+    setConfirmModal({
+      isOpen: true,
+      title: '¿Eliminar proyecto?',
+      message: '¿Estás seguro que quieres eliminar este proyecto? Esta acción no se puede deshacer.',
+      onConfirm: async () => {
+        try {
+          await projects.delete(id);
+          const newProjects = projectList.filter(p => p.id !== id);
+          setProjectList(newProjects);
+        } catch (error) {
+          console.error('Error deleting project:', error);
+        }
       }
-    }
+    });
   };
-
-
 
   const openProjectModal = (project = null) => {
     if (project) {
@@ -190,32 +194,6 @@ export default function Projects() {
                 <div className="p-2 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 shadow-lg">
                   <FiFolder className="text-white" size={20} />
                 </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {project.user && project.user.id === user?.id && (
-                    <>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openProjectModal(project);
-                        }}
-                        className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-white/10 transition-all"
-                        title="Edit"
-                      >
-                        <FiEdit2 size={16} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteProject(project.id);
-                        }}
-                        className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-white/10 transition-all"
-                        title="Delete"
-                      >
-                        <FiTrash2 size={16} />
-                      </button>
-                    </>
-                  )}
-                </div>
               </div>
 
               <div className="flex items-center gap-2 mb-2">
@@ -242,7 +220,7 @@ export default function Projects() {
                 </p>
               )}
 
-              <div className="grid grid-cols-4 gap-2 mt-4 mb-6">
+              <div className="grid grid-cols-4 gap-2 mt-4 mb-4">
                 <div className="bg-slate-100 dark:bg-black/20 rounded-lg p-2 text-center">
                   <span className="block text-lg font-bold text-purple-600 dark:text-purple-400">{project.repos?.length || 0}</span>
                   <span className="text-xs text-slate-500 dark:text-slate-500">Repos</span>
@@ -260,6 +238,13 @@ export default function Projects() {
                   <span className="text-xs text-slate-500 dark:text-slate-500">Langs</span>
                 </div>
               </div>
+
+              <button
+                onClick={() => navigate(`/projects/${project.id}`)}
+                className="w-full py-2.5 px-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+              >
+                Ver proyecto
+              </button>
 
             </div>
           ))
@@ -373,6 +358,16 @@ export default function Projects() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+      />
     </div>
   );
 }

@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { FiPlus, FiEdit2, FiTrash2, FiExternalLink, FiGitBranch, FiLock, FiGlobe, FiCode, FiSearch, FiStar } from 'react-icons/fi';
 import { repositories } from '../services/api';
 import Modal from '../components/Modal';
+import AlertModal from '../components/AlertModal';
+import ConfirmModal from '../components/ConfirmModal';
 
 export default function Repositories() {
   const [repos, setRepos] = useState([]);
@@ -12,6 +14,9 @@ export default function Repositories() {
   const [cloneInfo, setCloneInfo] = useState(null);
   const [editingRepo, setEditingRepo] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [alertModal, setAlertModal] = useState({ isOpen: false, title: '', message: '', type: 'info' });
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {}, confirmText: 'Confirmar', cancelText: 'Cancelar' });
+  const [deleteRepoId, setDeleteRepoId] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     url: '',
@@ -82,24 +87,38 @@ export default function Repositories() {
       console.error('Error creating GitHub repo:', error);
       const errorMessage = error.response?.data?.error || 'Error creating GitHub repository';
       if (error.response?.status === 400 || error.response?.status === 401) {
-        if (confirm(`${errorMessage}\n\n¿Quieres reconectar tu cuenta de GitHub?`)) {
-          window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/auth/github`;
-        }
+        setConfirmModal({
+          isOpen: true,
+          title: 'Error de autenticación',
+          message: `${errorMessage}\n\n¿Quieres reconectar tu cuenta de GitHub?`,
+          confirmText: 'Reconectar',
+          cancelText: 'Cancelar',
+          onConfirm: () => {
+            window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/auth/github`;
+          }
+        });
       } else {
-        alert(errorMessage);
+        setAlertModal({ isOpen: true, title: 'Error', message: errorMessage, type: 'error' });
       }
     }
   };
 
-  const handleDelete = async (id) => {
-    if (confirm('Are you sure you want to delete this repository?')) {
-      try {
-        await repositories.delete(id);
-        loadRepos();
-      } catch (error) {
-        console.error('Error deleting repo:', error);
+  const handleDelete = (id) => {
+    setConfirmModal({
+      isOpen: true,
+      title: '¿Eliminar repositorio?',
+      message: '¿Estás seguro que quieres eliminar este repositorio? Esta acción no se puede deshacer.',
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      onConfirm: async () => {
+        try {
+          await repositories.delete(id);
+          loadRepos();
+        } catch (error) {
+          console.error('Error deleting repo:', error);
+        }
       }
-    }
+    });
   };
 
   const openModal = (repo = null) => {
@@ -470,6 +489,24 @@ export default function Repositories() {
           </div>
         )}
       </Modal>
+
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ ...alertModal, isOpen: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.confirmText || 'Eliminar'}
+        cancelText={confirmModal.cancelText || 'Cancelar'}
+      />
     </div>
   );
 }
