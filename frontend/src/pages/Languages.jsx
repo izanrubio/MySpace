@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FiPlus, FiEdit2, FiTrash2, FiCode, FiLayers } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiCode, FiLayers, FiSearch } from 'react-icons/fi';
 import { languages, projects } from '../services/api';
 import Modal from '../components/Modal';
 
@@ -9,6 +9,7 @@ export default function Languages() {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingLanguage, setEditingLanguage] = useState(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const [languageForm, setLanguageForm] = useState({
         name: '',
@@ -111,137 +112,167 @@ export default function Languages() {
         setLanguageForm({ ...languageForm, projectIds: selectedIds });
     };
 
+    const filteredLanguages = languageList.filter(lang =>
+        lang.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        lang.category?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
     if (loading) {
-        return <div className="text-white">Cargando...</div>;
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-purple-500 border-t-transparent"></div>
+            </div>
+        );
     }
 
     return (
-        <div>
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-white">Lenguajes y Tecnologías</h1>
+        <div className="max-w-7xl mx-auto space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Languages & Tech</h1>
+                    <p className="text-slate-600 dark:text-slate-400">Manage your programming languages and technologies</p>
+                </div>
                 <button
                     onClick={() => openModal()}
-                    className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg shadow-purple-500/50 hover:shadow-purple-500/70 transition-all border-none"
+                    style={{ border: 'none' }} // Force no border to avoid ugly default borders
                 >
-                    <FiPlus /> Nuevo Lenguaje
+                    <FiPlus size={20} />
+                    New Language
                 </button>
             </div>
 
-            {languageList.length === 0 ? (
-                <div className="text-center py-12">
-                    <FiCode className="text-6xl text-gray-600 mx-auto mb-4" />
-                    <p className="text-gray-400 text-lg mb-4">
-                        No tienes lenguajes guardados aún
-                    </p>
-                    <button
-                        onClick={() => openModal()}
-                        className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg"
-                    >
-                        Crear tu primer lenguaje
-                    </button>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {languageList.map((lang) => (
+            {/* Search */}
+            <div className="relative">
+                <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500 dark:text-slate-400" size={20} />
+                <input
+                    type="text"
+                    placeholder="Search languages..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-12 pr-4 py-3 bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-purple-500 dark:focus:border-purple-500/50 focus:bg-slate-50 dark:focus:bg-white/10 transition-all"
+                />
+            </div>
+
+            {/* Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredLanguages.length === 0 ? (
+                    <div className="col-span-full text-center py-12 text-slate-600 dark:text-slate-400">
+                        No languages found
+                    </div>
+                ) : (
+                    filteredLanguages.map((lang) => (
                         <div
                             key={lang.id}
-                            className="bg-gray-800 border border-gray-700 rounded-lg p-5 hover:border-primary-500 transition-all group"
+                            className="group bg-white dark:bg-white/5 backdrop-blur-sm border border-slate-200 dark:border-white/10 rounded-2xl p-6 hover:bg-slate-50 dark:hover:bg-white/10 hover:border-purple-500 dark:hover:border-purple-500/50 hover:shadow-xl hover:shadow-purple-500/20 transition-all duration-300"
                         >
-                            <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-start justify-between mb-4">
                                 <div className="flex items-center gap-3">
                                     {lang.image ? (
-                                        <img
-                                            src={lang.image}
-                                            alt={lang.name}
-                                            className="w-12 h-12 rounded object-cover"
-                                        />
+                                        <div className="p-2 rounded-xl bg-white/5 border border-white/10">
+                                            <img
+                                                src={lang.image}
+                                                alt={lang.name}
+                                                className="w-10 h-10 object-contain"
+                                            />
+                                        </div>
                                     ) : (
-                                        <div className="w-12 h-12 rounded bg-primary-600 flex items-center justify-center">
-                                            <FiCode className="text-white text-xl" />
+                                        <div className="p-3 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 shadow-lg">
+                                            <FiCode className="text-white" size={24} />
                                         </div>
                                     )}
-                                    <div>
-                                        <h3 className="text-white font-semibold text-lg">{lang.name}</h3>
-                                        {lang.category && (
-                                            <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">
-                                                {lang.category}
-                                            </span>
-                                        )}
-                                    </div>
+                                </div>
+                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                        onClick={() => openModal(lang)}
+                                        className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-white/10 transition-all"
+                                        title="Edit"
+                                        style={{ border: 'none' }}
+                                    >
+                                        <FiEdit2 size={16} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleDelete(lang.id)}
+                                        className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-white/10 transition-all"
+                                        title="Delete"
+                                        style={{ border: 'none' }}
+                                    >
+                                        <FiTrash2 size={16} />
+                                    </button>
                                 </div>
                             </div>
 
-                            {lang.projects && lang.projects.length > 0 ? (
-                                <div className="mt-3">
-                                    <p className="text-xs text-gray-400 mb-1 flex items-center gap-1">
-                                        <FiLayers /> Usado en {lang.projects.length} proyectos:
-                                    </p>
-                                    <div className="flex flex-wrap gap-1">
-                                        {lang.projects.slice(0, 3).map(p => (
-                                            <span key={p.id} className="text-xs bg-gray-900 text-gray-400 px-2 py-0.5 rounded border border-gray-700">
-                                                {p.name}
-                                            </span>
-                                        ))}
-                                        {lang.projects.length > 3 && (
-                                            <span className="text-xs text-gray-500 px-1">+{lang.projects.length - 3}</span>
-                                        )}
-                                    </div>
-                                </div>
-                            ) : (
-                                <p className="mt-3 text-xs text-gray-500 italic">No asociado a proyectos</p>
-                            )}
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1 group-hover:text-purple-500 transition-colors">{lang.name}</h3>
+                                {lang.category && (
+                                    <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20 mb-4">
+                                        {lang.category}
+                                    </span>
+                                )}
+                            </div>
 
-                            <div className="flex gap-2 mt-4 pt-4 border-t border-gray-700">
-                                <button
-                                    onClick={() => openModal(lang)}
-                                    className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg flex items-center justify-center gap-2"
-                                >
-                                    <FiEdit2 /> Editar
-                                </button>
-                                <button
-                                    onClick={() => handleDelete(lang.id)}
-                                    className="bg-gray-700 hover:bg-red-600 text-white p-2 rounded-lg"
-                                    title="Eliminar"
-                                >
-                                    <FiTrash2 />
-                                </button>
+                            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-white/10">
+                                {lang.projects && lang.projects.length > 0 ? (
+                                    <div>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 flex items-center gap-1.5 font-medium">
+                                            <FiLayers /> Used in {lang.projects.length} projects
+                                        </p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {lang.projects.slice(0, 3).map(p => (
+                                                <span key={p.id} className="text-xs px-2 py-1 rounded-md bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/5">
+                                                    {p.name}
+                                                </span>
+                                            ))}
+                                            {lang.projects.length > 3 && (
+                                                <span className="text-xs px-2 py-1 rounded-md bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400">
+                                                    +{lang.projects.length - 3}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-slate-400 italic flex items-center gap-1.5 opacity-60">
+                                        <FiLayers /> Not used in any project yet
+                                    </p>
+                                )}
                             </div>
                         </div>
-                    ))}
-                </div>
-            )}
+                    ))
+                )}
+            </div>
 
             {/* Create/Edit Modal */}
             <Modal
                 isOpen={showModal}
                 onClose={closeModal}
-                title={editingLanguage ? 'Editar Lenguaje' : 'Nuevo Lenguaje'}
+                title={editingLanguage ? 'Edit Language' : 'New Language'}
             >
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Nombre del Lenguaje *
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                            Language Name *
                         </label>
                         <input
                             type="text"
                             value={languageForm.name}
                             onChange={(e) => setLanguageForm({ ...languageForm, name: e.target.value })}
-                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
-                            placeholder="Ej: React, Python, Docker..."
+                            className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all"
+                            placeholder="Ex: React, Python, Docker..."
                             required
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Categoría
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                            Category
                         </label>
                         <select
                             value={languageForm.category}
                             onChange={(e) => setLanguageForm({ ...languageForm, category: e.target.value })}
-                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
+                            className="w-full px-4 py-2.5 bg-gray-800 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all appearance-none"
                         >
-                            <option value="">Seleccionar categoría...</option>
+                            <option value="">Select category...</option>
                             {CATEGORIES.map(cat => (
                                 <option key={cat} value={cat}>{cat}</option>
                             ))}
@@ -249,27 +280,27 @@ export default function Languages() {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                            URL de la Imagen/Logo
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                            Image/Logo URL
                         </label>
                         <input
                             type="url"
                             value={languageForm.image}
                             onChange={(e) => setLanguageForm({ ...languageForm, image: e.target.value })}
-                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
-                            placeholder="https://ejemplo.com/logo.png"
+                            className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all"
+                            placeholder="https://example.com/logo.png"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Usado en Proyectos
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                            Used in Projects
                         </label>
                         <select
                             multiple
                             value={languageForm.projectIds}
                             onChange={handleProjectChange}
-                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-primary-500 h-32"
+                            className="w-full px-4 py-2.5 bg-gray-800 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 h-32"
                         >
                             {projectList.map(project => (
                                 <option key={project.id} value={project.id}>
@@ -277,24 +308,25 @@ export default function Languages() {
                                 </option>
                             ))}
                         </select>
-                        <p className="text-xs text-gray-400 mt-1">
-                            Mantén presionado Ctrl (Windows) o Cmd (Mac) para seleccionar múltiples proyectos.
+                        <p className="text-xs text-slate-400 mt-2">
+                            Hold Ctrl (Windows) or Cmd (Mac) to select multiple projects.
                         </p>
                     </div>
 
-                    <div className="flex gap-2 pt-4">
+                    <div className="flex gap-3 pt-4">
                         <button
                             type="submit"
-                            className="flex-1 bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg"
+                            className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all border-none"
+                            style={{ border: 'none' }}
                         >
-                            {editingLanguage ? 'Actualizar' : 'Crear'}
+                            {editingLanguage ? 'Update' : 'Create'}
                         </button>
                         <button
                             type="button"
                             onClick={closeModal}
-                            className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg"
+                            className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white rounded-xl font-medium transition-all"
                         >
-                            Cancelar
+                            Cancel
                         </button>
                     </div>
                 </form>
