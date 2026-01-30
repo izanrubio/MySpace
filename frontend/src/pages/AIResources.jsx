@@ -15,6 +15,9 @@ export default function AIResources() {
   const [currentFolderId, setCurrentFolderId] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'table'
+  const [dragTarget, setDragTarget] = useState(null); // ID de la carpeta sobre la que se está arrastrando
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [movingResource, setMovingResource] = useState(null);
   const contextMenuRef = useRef(null);
 
   const [folderForm, setFolderForm] = useState({
@@ -26,6 +29,7 @@ export default function AIResources() {
   const [aiForm, setAiForm] = useState({
     name: '',
     url: '',
+    type: 'web',
     description: '',
     folderId: '',
   });
@@ -126,6 +130,57 @@ export default function AIResources() {
     }
   };
 
+  // Drag and Drop Handlers
+  const handleDragStart = (e, ai) => {
+    e.dataTransfer.setData('aiId', ai.id);
+    e.dataTransfer.effectAllowed = 'move';
+    // Opcional: Imagen fantasma personalizada
+  };
+
+  const handleDragOver = (e, folderId) => {
+    e.preventDefault(); // Necesario para permitir el drop
+    if (dragTarget !== folderId) {
+      setDragTarget(folderId);
+    }
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setDragTarget(null);
+  };
+
+  const handleDrop = async (e, folderId) => {
+    e.preventDefault();
+    setDragTarget(null);
+    const aiId = e.dataTransfer.getData('aiId');
+
+    if (!aiId) return;
+
+    try {
+      // Mover recurso a la nueva carpeta
+      await aiResources.update(aiId, { folderId });
+
+      // Actualizar UI optimista o recargar
+      loadData();
+    } catch (error) {
+      console.error('Error moving resource:', error);
+      alert('Error al mover el recurso');
+    }
+  };
+
+  const handleMoveResource = async (targetFolderId) => {
+    if (!movingResource) return;
+    try {
+      await aiResources.update(movingResource.id, { folderId: targetFolderId });
+      loadData();
+      setShowMoveModal(false);
+      setMovingResource(null);
+    } catch (error) {
+      console.error('Error moving resource:', error);
+      alert('Error al mover el recurso');
+    }
+  };
+
   const openFolderModal = (folder = null) => {
     if (folder) {
       setEditingFolder(folder);
@@ -153,6 +208,7 @@ export default function AIResources() {
       setAiForm({
         name: ai.name,
         url: ai.url,
+        type: ai.type || 'web',
         description: ai.description || '',
         folderId: ai.folderId || '',
       });
@@ -161,6 +217,7 @@ export default function AIResources() {
       setAiForm({
         name: '',
         url: '',
+        type: 'web',
         description: '',
         folderId: folderId || currentFolderId || '',
       });
@@ -287,7 +344,9 @@ export default function AIResources() {
       <div className="flex items-center gap-2 text-sm">
         <button
           onClick={() => setCurrentFolderId(null)}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-all"
+          onDragOver={(e) => handleDragOver(e, 'root')}
+          onDrop={(e) => handleDrop(e, null)}
+          className={`flex items-center gap-1 px-3 py-1.5 rounded-lg transition-all ${dragTarget === 'root' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}
         >
           <FiHome size={16} />
           <span>Inicio</span>
@@ -297,7 +356,9 @@ export default function AIResources() {
             <span className="text-slate-500">/</span>
             <button
               onClick={() => setCurrentFolderId(folder.id)}
-              className="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-all"
+              onDragOver={(e) => handleDragOver(e, folder.id)}
+              onDrop={(e) => handleDrop(e, folder.id)}
+              className={`px-3 py-1.5 rounded-lg transition-all ${dragTarget === folder.id ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}
             >
               {folder.name}
             </button>
@@ -342,16 +403,19 @@ export default function AIResources() {
                   e.stopPropagation();
                   handleContextMenu(e, folder, 'folder');
                 }}
-                className="group relative w-full aspect-[5/4] cursor-pointer perspective-1000"
+                onDragOver={(e) => handleDragOver(e, folder.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, folder.id)}
+                className={`group relative w-full aspect-[5/4] cursor-pointer perspective-1000 transition-transform ${dragTarget === folder.id ? 'scale-105 z-20' : ''}`}
               >
                 {/* Back Plate (Tab) */}
-                <div className="absolute top-0 left-0 w-[40%] h-full bg-slate-700/50 rounded-t-xl border-t border-l border-white/10 transition-colors group-hover:bg-amber-600/30"></div>
+                <div className={`absolute top-0 left-0 w-[40%] h-full rounded-t-xl border-t border-l border-white/10 transition-colors ${dragTarget === folder.id ? 'bg-amber-500/50' : 'bg-slate-700/50 group-hover:bg-amber-600/30'}`}></div>
 
                 {/* Back Body */}
-                <div className="absolute top-3 inset-x-0 bottom-0 bg-slate-800/80 rounded-xl border border-white/5 shadow-inner"></div>
+                <div className={`absolute top-3 inset-x-0 bottom-0 rounded-xl border shadow-inner ${dragTarget === folder.id ? 'bg-amber-500/10 border-amber-400' : 'bg-slate-800/80 border-white/5'}`}></div>
 
                 {/* Papers Inside (Decorative) */}
-                <div className="absolute top-4 left-3 right-3 bottom-2 bg-white/10 rounded-t-lg border-t border-white/20 shadow-sm translate-y-1 group-hover:-translate-y-1 transition-transform duration-300"></div>
+                <div className={`absolute top-4 left-3 right-3 bottom-2 bg-white/10 rounded-t-lg border-t border-white/20 shadow-sm transition-transform duration-300 ${dragTarget === folder.id ? '-translate-y-3' : 'translate-y-1 group-hover:-translate-y-1'}`}></div>
                 <div className="absolute top-5 left-4 right-4 bottom-2 bg-white/5 rounded-t-lg border-t border-white/10 translate-y-1 group-hover:-translate-y-2 transition-transform duration-300 delay-75"></div>
 
                 {/* Front Cover */}
@@ -373,13 +437,15 @@ export default function AIResources() {
             {filteredAIs.map((ai) => (
               <div
                 key={ai.id}
+                draggable="true"
+                onDragStart={(e) => handleDragStart(e, ai)}
                 onDoubleClick={() => window.open(ai.url, '_blank')}
                 onContextMenu={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   handleContextMenu(e, ai, 'ai');
                 }}
-                className="group relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 hover:bg-white/10 hover:border-purple-500/30 transition-all cursor-pointer"
+                className="group relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 hover:bg-white/10 hover:border-purple-500/30 transition-all cursor-grab active:cursor-grabbing"
               >
                 <div className="flex flex-col items-center gap-2">
                   <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg">
@@ -596,6 +662,17 @@ export default function AIResources() {
                 Editar
               </button>
               <button
+                onClick={() => {
+                  setMovingResource(contextMenu.item);
+                  setShowMoveModal(true);
+                  setContextMenu(null);
+                }}
+                className="w-full px-4 py-2 text-left text-sm text-white hover:bg-white/10 transition-all flex items-center gap-3"
+              >
+                <FiFolder size={16} />
+                Mover a...
+              </button>
+              <button
                 onClick={() => handleDeleteAI(contextMenu.item.id)}
                 className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 transition-all flex items-center gap-3"
               >
@@ -689,6 +766,7 @@ export default function AIResources() {
               required
             />
           </div>
+
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">Carpeta</label>
             <select
@@ -729,6 +807,34 @@ export default function AIResources() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Move Resource Modal */}
+      <Modal isOpen={showMoveModal} onClose={() => setShowMoveModal(false)} title="Mover Recurso">
+        <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
+          <button
+            onClick={() => handleMoveResource(null)}
+            className={`w-full text-left px-4 py-3 rounded-xl border transition-all flex items-center gap-3 ${movingResource?.folderId === null ? 'bg-purple-900/20 border-purple-500/50 text-purple-200' : 'bg-white/5 border-white/10 text-white hover:bg-white/10'}`}
+          >
+            <FiHome size={18} />
+            <span>Inicio</span>
+            {movingResource?.folderId === null && <span className="ml-auto text-xs opacity-70">Actual</span>}
+          </button>
+
+          {folderList.map(folder => (
+            <button
+              key={folder.id}
+              onClick={() => handleMoveResource(folder.id)}
+              disabled={movingResource?.folderId === folder.id}
+              className={`w-full text-left px-4 py-3 rounded-xl border transition-all flex items-center gap-3 ${movingResource?.folderId === folder.id ? 'bg-purple-900/20 border-purple-500/50 text-purple-200 opacity-50 cursor-default' : 'bg-white/5 border-white/10 text-white hover:bg-white/10'}`}
+            >
+              <FiFolder size={18} className="text-amber-500" />
+              <span>{folder.name}</span>
+              {folder.parentId && <span className="text-xs text-slate-500 ml-2">(Subcarpeta)</span>}
+              {movingResource?.folderId === folder.id && <span className="ml-auto text-xs opacity-70">Actual</span>}
+            </button>
+          ))}
+        </div>
       </Modal>
     </div >
   );

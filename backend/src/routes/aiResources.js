@@ -62,15 +62,18 @@ router.post('/', async (req, res) => {
     const { name, url, type, description, tags, folderId } = req.body;
 
     // Validate required fields
-    if (!name || !url || !type) {
+    if (!name || !url) {
       return res.status(400).json({
-        error: 'Missing required fields: name, url, and type are required'
+        error: 'Missing required fields: name and url are required'
       });
     }
 
+    // Default type if not provided
+    const resourceType = type || 'web';
+
     // Validate type
     const validTypes = ['web', 'local', 'api'];
-    if (!validTypes.includes(type)) {
+    if (!validTypes.includes(resourceType)) {
       return res.status(400).json({
         error: `Invalid type. Must be one of: ${validTypes.join(', ')}`
       });
@@ -94,7 +97,7 @@ router.post('/', async (req, res) => {
       data: {
         name,
         url,
-        type,
+        type: resourceType,
         description,
         tags: tags || [],
         folderId,
