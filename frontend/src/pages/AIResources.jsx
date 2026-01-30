@@ -317,25 +317,22 @@ export default function AIResources() {
         />
       </div>
 
-      {/* Grid/Table View */}
-      {viewMode === 'grid' ? (
-        /* Grid View */
-        <div
-          className="relative min-h-[500px]"
-          onContextMenu={(e) => {
-            const isGridOrBackground = e.target.classList.contains('grid') ||
-              e.target.classList.contains('context-menu-area') ||
-              e.target === e.currentTarget;
+      {/* Grid/Table View Area */}
+      <div
+        className="flex-1 min-h-[calc(100vh-250px)]"
+        onContextMenu={(e) => {
+          // Prevent native menu if clicking on background
+          if (e.target === e.currentTarget || e.target.classList.contains('context-area')) {
+            e.preventDefault();
+            handleContextMenu(e, null, 'empty');
+          }
+        }}
+      >
+        <div className="absolute inset-0 z-[-1] context-area" />
 
-            if (isGridOrBackground) {
-              e.preventDefault();
-              handleContextMenu(e, null, 'empty');
-            }
-          }}
-        >
-          <div className="absolute inset-0 context-menu-area" />
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 relative z-10">
+        {viewMode === 'grid' ? (
+          /* Grid View */
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {filteredFolders.map((folder) => (
               <div
                 key={folder.id}
@@ -345,18 +342,30 @@ export default function AIResources() {
                   e.stopPropagation();
                   handleContextMenu(e, folder, 'folder');
                 }}
-                className="group relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 hover:bg-white/10 hover:border-purple-500/30 transition-all cursor-pointer"
+                className="group relative w-full aspect-[5/4] cursor-pointer perspective-1000"
               >
-                <div className="flex flex-col items-center gap-2">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 shadow-lg">
-                    <FiFolder className="text-white" size={28} />
-                  </div>
-                  <div className="text-center w-full">
-                    <p className="text-sm font-medium text-white truncate">{folder.name}</p>
-                    <p className="text-xs text-slate-400">
-                      {aiList.filter(ai => ai.folderId === folder.id).length} recursos
-                    </p>
-                  </div>
+                {/* Back Plate (Tab) */}
+                <div className="absolute top-0 left-0 w-[40%] h-full bg-slate-700/50 rounded-t-xl border-t border-l border-white/10 transition-colors group-hover:bg-amber-600/30"></div>
+
+                {/* Back Body */}
+                <div className="absolute top-3 inset-x-0 bottom-0 bg-slate-800/80 rounded-xl border border-white/5 shadow-inner"></div>
+
+                {/* Papers Inside (Decorative) */}
+                <div className="absolute top-4 left-3 right-3 bottom-2 bg-white/10 rounded-t-lg border-t border-white/20 shadow-sm translate-y-1 group-hover:-translate-y-1 transition-transform duration-300"></div>
+                <div className="absolute top-5 left-4 right-4 bottom-2 bg-white/5 rounded-t-lg border-t border-white/10 translate-y-1 group-hover:-translate-y-2 transition-transform duration-300 delay-75"></div>
+
+                {/* Front Cover */}
+                <div className="absolute top-6 inset-x-0 bottom-0 bg-gradient-to-t from-slate-900/90 to-slate-800/90 backdrop-blur-xl border-t border-white/10 border-b border-black/50 rounded-xl shadow-2xl transition-all duration-300 group-hover:border-t-amber-500/50 group-hover:shadow-amber-500/10 flex flex-col items-center justify-end p-4 pb-5 overflow-hidden">
+                  {/* Gradient Overlay on Hover */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-amber-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+
+                  {/* Shine effect */}
+                  <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+
+                  <h3 className="text-base font-bold text-white tracking-wide text-center relative z-10 group-hover:text-amber-400 transition-colors">{folder.name}</h3>
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold relative z-10 mt-1 group-hover:text-amber-200/50 transition-colors">
+                    {aiList.filter(ai => ai.folderId === folder.id).length} Items
+                  </p>
                 </div>
               </div>
             ))}
@@ -383,139 +392,143 @@ export default function AIResources() {
               </div>
             ))}
           </div>
-        </div>
-      ) : (
-        /* Table View */
-        <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/10">
-                <th className="text-left px-6 py-4 text-sm font-medium text-slate-300">Tipo</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-slate-300">Nombre</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-slate-300">Descripción</th>
-                <th className="text-right px-6 py-4 text-sm font-medium text-slate-300">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {/* Folders */}
-              {filteredFolders.map((folder) => (
-                <tr
-                  key={folder.id}
-                  onDoubleClick={() => handleFolderDoubleClick(folder.id)}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    handleContextMenu(e, folder, 'folder');
-                  }}
-                  className="border-b border-white/5 hover:bg-white/5 transition-all cursor-pointer"
-                >
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500">
-                        <FiFolder className="text-white" size={18} />
-                      </div>
-                      <span className="text-sm text-slate-400">Carpeta</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-sm font-medium text-white">{folder.name}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-sm text-slate-400 truncate max-w-md">
-                      {folder.description || `${aiList.filter(ai => ai.folderId === folder.id).length} recursos`}
-                    </p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openFolderModal(folder);
-                        }}
-                        className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-all"
-                        title="Editar"
-                      >
-                        <FiEdit2 size={16} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteFolder(folder.id);
-                        }}
-                        className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
-                        title="Eliminar"
-                      >
-                        <FiTrash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
+        ) : (
+          /* Table View */
+          <div
+            className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden"
+          >
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/10">
+                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-300">Tipo</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-300">Nombre</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-300">Descripción</th>
+                  <th className="text-right px-6 py-4 text-sm font-medium text-slate-300">Acciones</th>
                 </tr>
-              ))}
+              </thead>
+              <tbody>
+                {/* Folders */}
+                {filteredFolders.map((folder) => (
+                  <tr
+                    key={folder.id}
+                    onDoubleClick={() => handleFolderDoubleClick(folder.id)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleContextMenu(e, folder, 'folder');
+                    }}
+                    className="border-b border-white/5 hover:bg-white/5 transition-all cursor-pointer"
+                  >
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500">
+                          <FiFolder className="text-white" size={18} />
+                        </div>
+                        <span className="text-sm text-slate-400">Carpeta</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-sm font-medium text-white">{folder.name}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-sm text-slate-400 truncate max-w-md">
+                        {folder.description || `${aiList.filter(ai => ai.folderId === folder.id).length} recursos`}
+                      </p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openFolderModal(folder);
+                          }}
+                          className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                          title="Editar"
+                        >
+                          <FiEdit2 size={16} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteFolder(folder.id);
+                          }}
+                          className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                          title="Eliminar"
+                        >
+                          <FiTrash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
 
-              {/* AI Resources */}
-              {filteredAIs.map((ai) => (
-                <tr
-                  key={ai.id}
-                  onDoubleClick={() => window.open(ai.url, '_blank')}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    handleContextMenu(e, ai, 'ai');
-                  }}
-                  className="border-b border-white/5 hover:bg-white/5 transition-all cursor-pointer"
-                >
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
-                        <FiCpu className="text-white" size={18} />
+                {/* AI Resources */}
+                {filteredAIs.map((ai) => (
+                  <tr
+                    key={ai.id}
+                    onDoubleClick={() => window.open(ai.url, '_blank')}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleContextMenu(e, ai, 'ai');
+                    }}
+                    className="border-b border-white/5 hover:bg-white/5 transition-all cursor-pointer"
+                  >
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
+                          <FiCpu className="text-white" size={18} />
+                        </div>
+                        <span className="text-sm text-slate-400">Recurso IA</span>
                       </div>
-                      <span className="text-sm text-slate-400">Recurso IA</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-sm font-medium text-white">{ai.name}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-sm text-slate-400 truncate max-w-md">{ai.description || ai.url}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.open(ai.url, '_blank');
-                        }}
-                        className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-all"
-                        title="Abrir enlace"
-                      >
-                        <FiExternalLink size={16} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openAIModal(ai);
-                        }}
-                        className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-all"
-                        title="Editar"
-                      >
-                        <FiEdit2 size={16} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteAI(ai.id);
-                        }}
-                        className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
-                        title="Eliminar"
-                      >
-                        <FiTrash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-sm font-medium text-white">{ai.name}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-sm text-slate-400 truncate max-w-md">{ai.description || ai.url}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(ai.url, '_blank');
+                          }}
+                          className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                          title="Abrir enlace"
+                        >
+                          <FiExternalLink size={16} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openAIModal(ai);
+                          }}
+                          className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                          title="Editar"
+                        >
+                          <FiEdit2 size={16} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteAI(ai.id);
+                          }}
+                          className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                          title="Eliminar"
+                        >
+                          <FiTrash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Empty State */}
       {filteredFolders.length === 0 && filteredAIs.length === 0 && (
