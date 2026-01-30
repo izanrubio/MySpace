@@ -1,5 +1,6 @@
 {
     "version": 2,
+    "installCommand": "npm install && cd backend && npm install",
     "builds": [
         {
             "src": "backend/src/index.js",
@@ -9,6 +10,10 @@
     "rewrites": [
         {
             "source": "/api/(.*)",
+            "destination": "backend/src/index.js"
+        },
+        {
+            "source": "/health",
             "destination": "backend/src/index.js"
         },
         {
