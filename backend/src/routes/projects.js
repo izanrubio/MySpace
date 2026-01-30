@@ -193,6 +193,43 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// Update project status
+router.patch('/:id/status', async (req, res) => {
+  try {
+    const { status } = req.body;
+
+    // Validate status
+    const validStatuses = ['activo', 'pausado', 'completado', 'archivado'];
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status. Valid values: activo, pausado, completado, archivado' });
+    }
+
+    const project = await prisma.project.findFirst({
+      where: {
+        id: req.params.id,
+        OR: [
+          { userId: req.userId },
+          { sharedWith: { some: { userId: req.userId, role: 'editor' } } }
+        ]
+      },
+    });
+
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found or permission denied' });
+    }
+
+    const updated = await prisma.project.update({
+      where: { id: req.params.id },
+      data: { status },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error('Error updating project status:', error);
+    res.status(500).json({ error: 'Error updating project status', details: error.message });
+  }
+});
+
 // Delete project
 router.delete('/:id', async (req, res) => {
   try {

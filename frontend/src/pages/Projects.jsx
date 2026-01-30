@@ -99,6 +99,33 @@ export default function Projects() {
     });
   };
 
+  const handleStatusChange = async (projectId, newStatus) => {
+    try {
+      await projects.updateStatus(projectId, newStatus);
+      // Update the local state
+      setProjectList(projectList.map(p => 
+        p.id === projectId ? { ...p, status: newStatus } : p
+      ));
+    } catch (error) {
+      console.error('Error updating project status:', error);
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      activo: { color: 'bg-green-500/10 border-green-500/30 text-green-500', label: 'Activo' },
+      pausado: { color: 'bg-yellow-500/10 border-yellow-500/30 text-yellow-500', label: 'Pausado' },
+      completado: { color: 'bg-blue-500/10 border-blue-500/30 text-blue-500', label: 'Completado' },
+      archivado: { color: 'bg-slate-500/10 border-slate-500/30 text-slate-500', label: 'Archivado' },
+    };
+    const config = statusConfig[status] || statusConfig.activo;
+    return (
+      <div className={`flex items-center gap-1 px-2 py-0.5 border rounded-lg ${config.color}`}>
+        <span className="text-xs font-medium">{config.label}</span>
+      </div>
+    );
+  };
+
   const openProjectModal = (project = null) => {
     if (project) {
       setEditingProject(project);
@@ -194,12 +221,29 @@ export default function Projects() {
                 <div className="p-2 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 shadow-lg">
                   <FiFolder className="text-white" size={20} />
                 </div>
+                {project.user && project.user.id === user?.id && (
+                  <select
+                    value={project.status || 'activo'}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      handleStatusChange(project.id, e.target.value);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="px-2 py-1 text-xs font-medium bg-white/5 border border-white/10 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-purple-500 cursor-pointer"
+                  >
+                    <option value="activo">Activo</option>
+                    <option value="pausado">Pausado</option>
+                    <option value="completado">Completado</option>
+                    <option value="archivado">Archivado</option>
+                  </select>
+                )}
               </div>
 
               <div className="flex items-center gap-2 mb-2">
                 <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-purple-500 transition-colors">
                   {project.name}
                 </h3>
+                {getStatusBadge(project.status || 'activo')}
                 {project.user && project.user.id !== user?.id && (
                   <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-500/10 border border-blue-500/30 rounded-lg">
                     <FiUsers className="text-blue-500" size={12} />

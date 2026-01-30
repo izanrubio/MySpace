@@ -56,6 +56,7 @@ export const projects = {
   getById: (id) => api.get(`/projects/${id}`),
   create: (data) => api.post('/projects', data),
   update: (id, data) => api.put(`/projects/${id}`, data),
+  updateStatus: (id, status) => api.patch(`/projects/${id}/status`, { status }),
   delete: (id) => api.delete(`/projects/${id}`),
   addRepository: (id, repoId) => api.post(`/projects/${id}/repositories`, { repoId }),
   removeRepository: (id, repoId) => api.delete(`/projects/${id}/repositories/${repoId}`),

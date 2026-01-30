@@ -43,6 +43,7 @@ export default function ProjectDetail() {
         name: '',
         description: '',
         notes: '',
+        status: 'activo',
     });
 
     const [linkForm, setLinkForm] = useState({
@@ -68,6 +69,7 @@ export default function ProjectDetail() {
                 name: response.data.name,
                 description: response.data.description || '',
                 notes: response.data.notes || '',
+                status: response.data.status || 'activo',
             });
         } catch (error) {
             console.error('Error loading project:', error);
@@ -95,11 +97,24 @@ export default function ProjectDetail() {
     const handleUpdateProject = async (e) => {
         e.preventDefault();
         try {
-            await projects.update(id, projectForm);
-            loadProject();
+            const { status, ...updateData } = projectForm;
+            await projects.update(id, updateData);
+            
+            // Si el estado cambió, actualizarlo por separado
+            if (status !== project.status) {
+                await projects.updateStatus(id, status);
+            }
+            
+            await loadProject();
             setShowEditModal(false);
         } catch (error) {
             console.error('Error updating project:', error);
+            setAlertModal({ 
+                isOpen: true, 
+                title: 'Error', 
+                message: error.response?.data?.error || 'Error al actualizar el proyecto', 
+                type: 'error' 
+            });
         }
     };
 
@@ -234,6 +249,31 @@ export default function ProjectDetail() {
         });
     };
 
+    const handleStatusChange = async (newStatus) => {
+        try {
+            await projects.updateStatus(id, newStatus);
+            setProject({ ...project, status: newStatus });
+        } catch (error) {
+            console.error('Error updating project status:', error);
+            setAlertModal({ isOpen: true, title: 'Error', message: 'Error al actualizar el estado', type: 'error' });
+        }
+    };
+
+    const getStatusBadge = (status) => {
+        const statusConfig = {
+            activo: { color: 'bg-green-500/10 border-green-500/30 text-green-500', label: 'Activo' },
+            pausado: { color: 'bg-yellow-500/10 border-yellow-500/30 text-yellow-500', label: 'Pausado' },
+            completado: { color: 'bg-blue-500/10 border-blue-500/30 text-blue-500', label: 'Completado' },
+            archivado: { color: 'bg-slate-500/10 border-slate-500/30 text-slate-500', label: 'Archivado' },
+        };
+        const config = statusConfig[status] || statusConfig.activo;
+        return (
+            <div className={`flex items-center gap-1 px-3 py-1 border rounded-lg ${config.color}`}>
+                <span className="text-sm font-medium">{config.label}</span>
+            </div>
+        );
+    };
+
     const getAvailableRepos = () => {
         if (!project) return [];
         const projectRepoIds = project.repos?.map((pr) => pr.repository?.id) || [];
@@ -290,6 +330,7 @@ export default function ProjectDetail() {
                                 <FiFolder className="text-white" size={28} />
                             </div>
                             <h1 className="text-4xl font-bold text-slate-900 dark:text-white">{project.name}</h1>
+                            {getStatusBadge(project.status || 'activo')}
                         </div>
                         {project.description && (
                             <p className="text-lg text-slate-600 dark:text-slate-400 ml-16">{project.description}</p>
@@ -656,6 +697,59 @@ export default function ProjectDetail() {
                             rows="8"
                             placeholder="# Notas del proyecto..."
                         />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-2">Estado del Proyecto</label>
+                        <div className="grid grid-cols-2 gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setProjectForm({ ...projectForm, status: 'activo' })}
+                                className={`px-4 py-3 rounded-xl border-2 transition-all text-left ${
+                                    projectForm.status === 'activo'
+                                        ? 'bg-green-500/20 border-green-500 text-green-400'
+                                        : 'bg-white/5 border-white/10 text-slate-400 hover:border-green-500/50'
+                                }`}
+                            >
+                                <div className="font-semibold">🟢 Activo</div>
+                                <div className="text-xs mt-1 opacity-75">En desarrollo</div>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setProjectForm({ ...projectForm, status: 'pausado' })}
+                                className={`px-4 py-3 rounded-xl border-2 transition-all text-left ${
+                                    projectForm.status === 'pausado'
+                                        ? 'bg-yellow-500/20 border-yellow-500 text-yellow-400'
+                                        : 'bg-white/5 border-white/10 text-slate-400 hover:border-yellow-500/50'
+                                }`}
+                            >
+                                <div className="font-semibold">🟡 Pausado</div>
+                                <div className="text-xs mt-1 opacity-75">En espera</div>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setProjectForm({ ...projectForm, status: 'completado' })}
+                                className={`px-4 py-3 rounded-xl border-2 transition-all text-left ${
+                                    projectForm.status === 'completado'
+                                        ? 'bg-blue-500/20 border-blue-500 text-blue-400'
+                                        : 'bg-white/5 border-white/10 text-slate-400 hover:border-blue-500/50'
+                                }`}
+                            >
+                                <div className="font-semibold">🔵 Completado</div>
+                                <div className="text-xs mt-1 opacity-75">Finalizado</div>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setProjectForm({ ...projectForm, status: 'archivado' })}
+                                className={`px-4 py-3 rounded-xl border-2 transition-all text-left ${
+                                    projectForm.status === 'archivado'
+                                        ? 'bg-slate-500/20 border-slate-500 text-slate-400'
+                                        : 'bg-white/5 border-white/10 text-slate-400 hover:border-slate-500/50'
+                                }`}
+                            >
+                                <div className="font-semibold">⚪ Archivado</div>
+                                <div className="text-xs mt-1 opacity-75">Sin actividad</div>
+                            </button>
+                        </div>
                     </div>
                     <div className="flex gap-3 pt-4">
                         <button
