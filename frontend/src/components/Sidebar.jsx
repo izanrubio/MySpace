@@ -27,10 +27,8 @@ export default function Sidebar() {
             <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Workspace Manager</p>
           </div>
         </div>
-        <div className={`px-3 py-2 ${isDark ? 'bg-white/5 border-white/10' : 'bg-blue-50 border-blue-100'} rounded-lg border`}>
-          <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-900'} font-medium truncate`}>{user?.name}</p>
-          <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-600'} truncate`}>{user?.email}</p>
-        </div>
+
+
       </div>
 
       {/* Navigation */}
