@@ -78,7 +78,6 @@ export const languages = {
   create: (data) => api.post('/languages', data),
   update: (id, data) => api.put(`/languages/${id}`, data),
   delete: (id) => api.delete(`/languages/${id}`),
-  generate: (languageName) => api.post('/languages/generate', { languageName }),
 };
 
 export default api;

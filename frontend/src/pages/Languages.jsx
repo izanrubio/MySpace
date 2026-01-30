@@ -1,24 +1,32 @@
 import { useState, useEffect } from 'react';
-import { FiPlus, FiEdit2, FiTrash2, FiCode, FiStar, FiBookOpen } from 'react-icons/fi';
-import { languages } from '../services/api';
+import { FiPlus, FiEdit2, FiTrash2, FiCode, FiLayers } from 'react-icons/fi';
+import { languages, projects } from '../services/api';
 import Modal from '../components/Modal';
-import ReactMarkdown from 'react-markdown';
 
 export default function Languages() {
     const [languageList, setLanguageList] = useState([]);
+    const [projectList, setProjectList] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
-    const [showViewModal, setShowViewModal] = useState(false);
     const [editingLanguage, setEditingLanguage] = useState(null);
-    const [viewingLanguage, setViewingLanguage] = useState(null);
-    const [generating, setGenerating] = useState(false);
 
     const [languageForm, setLanguageForm] = useState({
         name: '',
-        description: '',
-        content: '',
+        category: '',
         image: '',
+        projectIds: [],
     });
+
+    const CATEGORIES = [
+        'Frontend',
+        'Backend',
+        'Mobile',
+        'Data/IA',
+        'Sistemas',
+        'Databases',
+        'DevOps',
+        'Otros'
+    ];
 
     useEffect(() => {
         loadData();
@@ -26,10 +34,14 @@ export default function Languages() {
 
     const loadData = async () => {
         try {
-            const res = await languages.getAll();
-            setLanguageList(res.data);
+            const [langsRes, projsRes] = await Promise.all([
+                languages.getAll(),
+                projects.getAll()
+            ]);
+            setLanguageList(langsRes.data);
+            setProjectList(projsRes.data);
         } catch (error) {
-            console.error('Error loading languages:', error);
+            console.error('Error loading data:', error);
         } finally {
             setLoading(false);
         }
@@ -62,43 +74,22 @@ export default function Languages() {
         }
     };
 
-    const handleGenerate = async () => {
-        if (!languageForm.name) {
-            alert('Por favor, ingresa el nombre del lenguaje primero');
-            return;
-        }
-
-        setGenerating(true);
-        try {
-            const res = await languages.generate(languageForm.name);
-            setLanguageForm({
-                ...languageForm,
-                content: res.data.content,
-            });
-        } catch (error) {
-            console.error('Error generating content:', error);
-            alert('Error al generar el contenido');
-        } finally {
-            setGenerating(false);
-        }
-    };
-
     const openModal = (language = null) => {
         if (language) {
             setEditingLanguage(language);
             setLanguageForm({
                 name: language.name,
-                description: language.description || '',
-                content: language.content || '',
+                category: language.category || '',
                 image: language.image || '',
+                projectIds: language.projects ? language.projects.map(p => p.id) : [],
             });
         } else {
             setEditingLanguage(null);
             setLanguageForm({
                 name: '',
-                description: '',
-                content: '',
+                category: '',
                 image: '',
+                projectIds: [],
             });
         }
         setShowModal(true);
@@ -109,14 +100,15 @@ export default function Languages() {
         setEditingLanguage(null);
     };
 
-    const openViewModal = (language) => {
-        setViewingLanguage(language);
-        setShowViewModal(true);
-    };
-
-    const closeViewModal = () => {
-        setShowViewModal(false);
-        setViewingLanguage(null);
+    const handleProjectChange = (e) => {
+        const options = e.target.options;
+        const selectedIds = [];
+        for (let i = 0; i < options.length; i++) {
+            if (options[i].selected) {
+                selectedIds.push(options[i].value);
+            }
+        }
+        setLanguageForm({ ...languageForm, projectIds: selectedIds });
     };
 
     if (loading) {
@@ -126,7 +118,7 @@ export default function Languages() {
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-white">Lenguajes de Programación</h1>
+                <h1 className="text-3xl font-bold text-white">Lenguajes y Tecnologías</h1>
                 <button
                     onClick={() => openModal()}
                     className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
@@ -170,26 +162,41 @@ export default function Languages() {
                                     )}
                                     <div>
                                         <h3 className="text-white font-semibold text-lg">{lang.name}</h3>
-                                        {lang.description && (
-                                            <p className="text-gray-400 text-sm">{lang.description}</p>
+                                        {lang.category && (
+                                            <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">
+                                                {lang.category}
+                                            </span>
                                         )}
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="flex gap-2 mt-4">
-                                <button
-                                    onClick={() => openViewModal(lang)}
-                                    className="flex-1 bg-primary-600 hover:bg-primary-700 text-white py-2 rounded-lg flex items-center justify-center gap-2 text-sm"
-                                >
-                                    <FiBookOpen /> Ver Documentación
-                                </button>
+                            {lang.projects && lang.projects.length > 0 ? (
+                                <div className="mt-3">
+                                    <p className="text-xs text-gray-400 mb-1 flex items-center gap-1">
+                                        <FiLayers /> Usado en {lang.projects.length} proyectos:
+                                    </p>
+                                    <div className="flex flex-wrap gap-1">
+                                        {lang.projects.slice(0, 3).map(p => (
+                                            <span key={p.id} className="text-xs bg-gray-900 text-gray-400 px-2 py-0.5 rounded border border-gray-700">
+                                                {p.name}
+                                            </span>
+                                        ))}
+                                        {lang.projects.length > 3 && (
+                                            <span className="text-xs text-gray-500 px-1">+{lang.projects.length - 3}</span>
+                                        )}
+                                    </div>
+                                </div>
+                            ) : (
+                                <p className="mt-3 text-xs text-gray-500 italic">No asociado a proyectos</p>
+                            )}
+
+                            <div className="flex gap-2 mt-4 pt-4 border-t border-gray-700">
                                 <button
                                     onClick={() => openModal(lang)}
-                                    className="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-lg"
-                                    title="Editar"
+                                    className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg flex items-center justify-center gap-2"
                                 >
-                                    <FiEdit2 />
+                                    <FiEdit2 /> Editar
                                 </button>
                                 <button
                                     onClick={() => handleDelete(lang.id)}
@@ -220,22 +227,25 @@ export default function Languages() {
                             value={languageForm.name}
                             onChange={(e) => setLanguageForm({ ...languageForm, name: e.target.value })}
                             className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
-                            placeholder="Ej: PHP, Python, JavaScript..."
+                            placeholder="Ej: React, Python, Docker..."
                             required
                         />
                     </div>
 
                     <div>
                         <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Descripción Corta
+                            Categoría
                         </label>
-                        <input
-                            type="text"
-                            value={languageForm.description}
-                            onChange={(e) => setLanguageForm({ ...languageForm, description: e.target.value })}
+                        <select
+                            value={languageForm.category}
+                            onChange={(e) => setLanguageForm({ ...languageForm, category: e.target.value })}
                             className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-primary-500"
-                            placeholder="Breve descripción del lenguaje"
-                        />
+                        >
+                            <option value="">Seleccionar categoría...</option>
+                            {CATEGORIES.map(cat => (
+                                <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                        </select>
                     </div>
 
                     <div>
@@ -252,30 +262,23 @@ export default function Languages() {
                     </div>
 
                     <div>
-                        <div className="flex justify-between items-center mb-2">
-                            <label className="block text-sm font-medium text-gray-300">
-                                Documentación (Markdown) *
-                            </label>
-                            <button
-                                type="button"
-                                onClick={handleGenerate}
-                                disabled={generating || !languageForm.name}
-                                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-gray-600 disabled:to-gray-600 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
-                            >
-                                <FiStar className={generating ? 'animate-spin' : ''} />
-                                {generating ? 'Generando...' : 'Generar con IA'}
-                            </button>
-                        </div>
-                        <textarea
-                            value={languageForm.content}
-                            onChange={(e) => setLanguageForm({ ...languageForm, content: e.target.value })}
-                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-primary-500 font-mono text-sm"
-                            rows="12"
-                            placeholder="# Título&#10;&#10;## Instalación&#10;&#10;```bash&#10;npm install...&#10;```"
-                            required
-                        />
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Usado en Proyectos
+                        </label>
+                        <select
+                            multiple
+                            value={languageForm.projectIds}
+                            onChange={handleProjectChange}
+                            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-primary-500 h-32"
+                        >
+                            {projectList.map(project => (
+                                <option key={project.id} value={project.id}>
+                                    {project.name}
+                                </option>
+                            ))}
+                        </select>
                         <p className="text-xs text-gray-400 mt-1">
-                            Puedes usar Markdown para formatear el contenido
+                            Mantén presionado Ctrl (Windows) o Cmd (Mac) para seleccionar múltiples proyectos.
                         </p>
                     </div>
 
@@ -295,37 +298,6 @@ export default function Languages() {
                         </button>
                     </div>
                 </form>
-            </Modal>
-
-            {/* View Documentation Modal */}
-            <Modal
-                isOpen={showViewModal}
-                onClose={closeViewModal}
-                title={viewingLanguage?.name || 'Documentación'}
-            >
-                <div className="prose prose-invert max-w-none">
-                    <ReactMarkdown
-                        className="markdown-content"
-                        components={{
-                            h1: ({ node, ...props }) => <h1 className="text-2xl font-bold text-white mb-4" {...props} />,
-                            h2: ({ node, ...props }) => <h2 className="text-xl font-bold text-white mb-3 mt-6" {...props} />,
-                            h3: ({ node, ...props }) => <h3 className="text-lg font-bold text-white mb-2 mt-4" {...props} />,
-                            p: ({ node, ...props }) => <p className="text-gray-300 mb-3" {...props} />,
-                            code: ({ node, inline, ...props }) =>
-                                inline ? (
-                                    <code className="bg-gray-800 text-primary-400 px-1 py-0.5 rounded text-sm" {...props} />
-                                ) : (
-                                    <code className="block bg-gray-900 text-gray-300 p-3 rounded-lg overflow-x-auto text-sm" {...props} />
-                                ),
-                            pre: ({ node, ...props }) => <pre className="bg-gray-900 rounded-lg mb-4" {...props} />,
-                            ul: ({ node, ...props }) => <ul className="list-disc list-inside text-gray-300 mb-3 space-y-1" {...props} />,
-                            ol: ({ node, ...props }) => <ol className="list-decimal list-inside text-gray-300 mb-3 space-y-1" {...props} />,
-                            a: ({ node, ...props }) => <a className="text-primary-400 hover:text-primary-300 underline" {...props} />,
-                        }}
-                    >
-                        {viewingLanguage?.content || ''}
-                    </ReactMarkdown>
-                </div>
             </Modal>
         </div>
     );
