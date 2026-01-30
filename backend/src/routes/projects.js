@@ -23,6 +23,11 @@ router.get('/', async (req, res) => {
           },
         },
         links: true,
+        languages: {
+          include: {
+            language: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -56,6 +61,11 @@ router.get('/:id', async (req, res) => {
           },
         },
         links: true,
+        languages: {
+          include: {
+            language: true,
+          },
+        },
       },
     });
 

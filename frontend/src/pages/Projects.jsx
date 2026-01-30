@@ -287,7 +287,7 @@ export default function Projects() {
                 </p>
               )}
 
-              <div className="grid grid-cols-3 gap-2 mt-4 mb-6">
+              <div className="grid grid-cols-4 gap-2 mt-4 mb-6">
                 <div className="bg-slate-100 dark:bg-black/20 rounded-lg p-2 text-center">
                   <span className="block text-lg font-bold text-purple-600 dark:text-purple-400">{project.repos?.length || 0}</span>
                   <span className="text-xs text-slate-500 dark:text-slate-500">Repos</span>
@@ -299,6 +299,10 @@ export default function Projects() {
                 <div className="bg-slate-100 dark:bg-black/20 rounded-lg p-2 text-center">
                   <span className="block text-lg font-bold text-blue-600 dark:text-blue-400">{project.links?.length || 0}</span>
                   <span className="text-xs text-slate-500 dark:text-slate-500">Links</span>
+                </div>
+                <div className="bg-slate-100 dark:bg-black/20 rounded-lg p-2 text-center">
+                  <span className="block text-lg font-bold text-amber-600 dark:text-amber-400">{project.languages?.length || 0}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-500">Langs</span>
                 </div>
               </div>
 
