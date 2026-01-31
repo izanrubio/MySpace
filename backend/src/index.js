@@ -1,12 +1,14 @@
-// ⚠️ SIEMPRE PRIMERO: carga variables de entorno antes de cualquier import
+// ⚠️ SIEMPRE PRIMERO: carga variables de entorno
 import 'dotenv/config';
 
 import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
 
-// Imports internos (después de dotenv)
+// Passport
 import passport from './config/passport.js';
+
+// Rutas
 import authRoutes from './routes/auth.js';
 import repoRoutes from './routes/repositories.js';
 import aiRoutes from './routes/aiResources.js';
@@ -15,6 +17,9 @@ import projectRoutes from './routes/projects.js';
 import searchRoutes from './routes/search.js';
 import languageRoutes from './routes/languages.js';
 import notificationRoutes from './routes/notifications.js';
+
+// ✅ Ruta de test de base de datos
+import dbTestRoutes from './routes/dbTest.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -29,9 +34,10 @@ app.use(
 
 app.use(express.json());
 
-// Session configuration
+// Session
 app.use(
   session({
+    name: 'myspace.sid',
     secret: process.env.SESSION_SECRET || 'myspace-secret-key-change-in-production',
     resave: false,
     saveUninitialized: false,
@@ -39,7 +45,7 @@ app.use(
       secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      maxAge: 24 * 60 * 60 * 1000, // 24 horas
+      maxAge: 24 * 60 * 60 * 1000, // 24h
     },
   })
 );
@@ -54,6 +60,11 @@ app.get('/', (req, res) => {
   res.send('Welcome to MySpace API! Go to /health to check status.');
 });
 
+// Health
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', message: 'MySpace API is running' });
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/repositories', repoRoutes);
@@ -64,10 +75,8 @@ app.use('/api/search', searchRoutes);
 app.use('/api/languages', languageRoutes);
 app.use('/api/notifications', notificationRoutes);
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', message: 'MySpace API is running' });
-});
+// ✅ DB TEST (MUY IMPORTANTE)
+app.use('/api', dbTestRoutes);
 
 // ❗ En Vercel NO se hace listen
 // app.listen(PORT, () => {
