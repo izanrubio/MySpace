@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FiPlus, FiEdit2, FiTrash2, FiExternalLink, FiGitBranch, FiLock, FiGlobe, FiCode, FiSearch, FiStar } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiExternalLink, FiGitBranch, FiLock, FiGlobe, FiCode, FiSearch, FiStar, FiRefreshCw } from 'react-icons/fi';
 import { repositories } from '../services/api';
 import Modal from '../components/Modal';
 import AlertModal from '../components/AlertModal';
@@ -8,6 +8,7 @@ import ConfirmModal from '../components/ConfirmModal';
 export default function Repositories() {
   const [repos, setRepos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showGitHubModal, setShowGitHubModal] = useState(false);
   const [showCloneInfoModal, setShowCloneInfoModal] = useState(false);
@@ -45,6 +46,46 @@ export default function Repositories() {
       console.error('Error loading repos:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const response = await repositories.sync();
+      await loadRepos();
+      
+      setAlertModal({
+        isOpen: true,
+        title: 'Sincronización completada',
+        message: `Se han sincronizado ${response.data.addedCount} repositorio(s) nuevo(s) de GitHub.`,
+        type: 'success'
+      });
+    } catch (error) {
+      console.error('Error syncing repos:', error);
+      const errorMessage = error.response?.data?.error || 'Error al sincronizar repositorios';
+      
+      if (error.response?.status === 400 || error.response?.status === 401) {
+        setConfirmModal({
+          isOpen: true,
+          title: 'Error de autenticación',
+          message: `${errorMessage}\n\n¿Quieres reconectar tu cuenta de GitHub?`,
+          confirmText: 'Reconectar',
+          cancelText: 'Cancelar',
+          onConfirm: () => {
+            window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/auth/github`;
+          }
+        });
+      } else {
+        setAlertModal({
+          isOpen: true,
+          title: 'Error',
+          message: errorMessage,
+          type: 'error'
+        });
+      }
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -215,13 +256,24 @@ export default function Repositories() {
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Repositories</h1>
           <p className="text-slate-600 dark:text-slate-400">Manage your code repositories and projects</p>
         </div>
-        <button
-          onClick={() => setShowGitHubModal(true)}
-          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg shadow-purple-500/50 hover:shadow-purple-500/70 transition-all"
-        >
-          <FiPlus size={20} />
-          New Repository
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="flex items-center gap-2 px-6 py-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Sincronizar repositorios de GitHub"
+          >
+            <FiRefreshCw size={20} className={syncing ? 'animate-spin' : ''} />
+            {syncing ? 'Sincronizando...' : 'Sincronizar'}
+          </button>
+          <button
+            onClick={() => setShowGitHubModal(true)}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg shadow-purple-500/50 hover:shadow-purple-500/70 transition-all"
+          >
+            <FiPlus size={20} />
+            New Repository
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -415,15 +467,27 @@ export default function Repositories() {
               rows="3"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="isPrivate"
-              checked={githubFormData.isPrivate}
-              onChange={(e) => setGithubFormData({ ...githubFormData, isPrivate: e.target.checked })}
-              className="w-4 h-4 rounded"
-            />
-            <label htmlFor="isPrivate" className="text-sm text-slate-700 dark:text-slate-300">Private repository</label>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="isPrivate"
+                checked={githubFormData.isPrivate}
+                onChange={(e) => setGithubFormData({ ...githubFormData, isPrivate: e.target.checked })}
+                className="w-4 h-4 rounded border-slate-300 dark:border-white/20 text-purple-600 focus:ring-purple-500 focus:ring-offset-0"
+              />
+              <label htmlFor="isPrivate" className="text-sm text-slate-700 dark:text-slate-300">Private repository</label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="autoInit"
+                checked={githubFormData.autoInit}
+                onChange={(e) => setGithubFormData({ ...githubFormData, autoInit: e.target.checked })}
+                className="w-4 h-4 rounded border-slate-300 dark:border-white/20 text-purple-600 focus:ring-purple-500 focus:ring-offset-0"
+              />
+              <label htmlFor="autoInit" className="text-sm text-slate-700 dark:text-slate-300">Initialize with README</label>
+            </div>
           </div>
           <div className="flex gap-3 pt-4">
             <button

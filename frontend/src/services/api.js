@@ -28,6 +28,7 @@ export const repositories = {
   getById: (id) => api.get(`/repositories/${id}`),
   create: (data) => api.post('/repositories', data),
   createGitHub: (data) => api.post('/repositories/github', data),
+  sync: () => api.post('/repositories/sync'),
   update: (id, data) => api.put(`/repositories/${id}`, data),
   delete: (id) => api.delete(`/repositories/${id}`),
 };

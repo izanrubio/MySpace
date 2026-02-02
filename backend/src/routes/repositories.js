@@ -180,6 +180,84 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// Sync GitHub repositories
+router.post('/sync', async (req, res) => {
+  try {
+    // Get user with GitHub access token
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { githubAccessToken: true, githubUsername: true },
+    });
+
+    if (!user?.githubAccessToken) {
+      return res.status(400).json({
+        error: 'GitHub account not connected. Please login with GitHub first.'
+      });
+    }
+
+    // Import Octokit dynamically
+    const { Octokit } = await import('@octokit/rest');
+    const octokit = new Octokit({ auth: user.githubAccessToken });
+
+    // Fetch all repositories from GitHub (owned + collaborator)
+    const { data: githubRepos } = await octokit.repos.listForAuthenticatedUser({
+      per_page: 100,
+      sort: 'updated',
+      affiliation: 'owner,collaborator',
+    });
+
+    // Get existing repositories from database
+    const existingRepos = await prisma.repository.findMany({
+      where: { userId: req.userId },
+    });
+
+    // Create a map of existing repos by URL for quick lookup
+    const existingRepoUrls = new Set(existingRepos.map(repo => repo.url));
+
+    // Sync new repositories
+    let addedCount = 0;
+    for (const githubRepo of githubRepos) {
+      // Skip if already exists
+      if (existingRepoUrls.has(githubRepo.html_url)) {
+        continue;
+      }
+
+      // Add new repository to database
+      await prisma.repository.create({
+        data: {
+          name: githubRepo.name,
+          url: githubRepo.html_url,
+          description: githubRepo.description || '',
+          technology: githubRepo.language || '',
+          tags: githubRepo.topics || [],
+          status: 'activo',
+          isPrivate: githubRepo.private,
+          userId: req.userId,
+        },
+      });
+      addedCount++;
+    }
+
+    res.json({
+      message: 'Repositories synced successfully',
+      addedCount,
+      totalGithubRepos: githubRepos.length,
+    });
+  } catch (error) {
+    console.error('Error syncing GitHub repositories:', error);
+
+    if (error.status === 401) {
+      return res.status(401).json({
+        error: 'GitHub authentication failed. Please reconnect your GitHub account.'
+      });
+    }
+
+    res.status(500).json({
+      error: error.message || 'Error syncing GitHub repositories'
+    });
+  }
+});
+
 // Delete repository
 router.delete('/:id', async (req, res) => {
   try {
