@@ -9,6 +9,7 @@ export default function Languages() {
     const [languageList, setLanguageList] = useState([]);
     const [projectList, setProjectList] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [editingLanguage, setEditingLanguage] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -54,6 +55,8 @@ export default function Languages() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (submitting) return;
+        setSubmitting(true);
         try {
             if (editingLanguage) {
                 await languages.update(editingLanguage.id, languageForm);
@@ -70,6 +73,8 @@ export default function Languages() {
                 message: 'Error al guardar el lenguaje: ' + (error.response?.data?.error || error.message), 
                 type: 'error' 
             });
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -330,15 +335,17 @@ export default function Languages() {
                     <div className="flex gap-3 pt-4">
                         <button
                             type="submit"
-                            className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all border-none"
+                            disabled={submitting}
+                            className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all border-none disabled:opacity-50 disabled:cursor-not-allowed"
                             style={{ border: 'none' }}
                         >
-                            {editingLanguage ? 'Update' : 'Create'}
+                            {submitting ? 'Guardando...' : (editingLanguage ? 'Update' : 'Create')}
                         </button>
                         <button
                             type="button"
                             onClick={closeModal}
-                            className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white rounded-xl font-medium transition-all"
+                            disabled={submitting}
+                            className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Cancel
                         </button>

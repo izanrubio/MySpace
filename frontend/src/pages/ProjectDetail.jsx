@@ -30,6 +30,9 @@ export default function ProjectDetail() {
     const { user } = useAuth();
     const [project, setProject] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [submittingUpdate, setSubmittingUpdate] = useState(false);
+    const [submittingLink, setSubmittingLink] = useState(false);
+    const [submittingShare, setSubmittingShare] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showLinkModal, setShowLinkModal] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
@@ -96,6 +99,8 @@ export default function ProjectDetail() {
 
     const handleUpdateProject = async (e) => {
         e.preventDefault();
+        if (submittingUpdate) return;
+        setSubmittingUpdate(true);
         try {
             const { status, ...updateData } = projectForm;
             await projects.update(id, updateData);
@@ -115,6 +120,8 @@ export default function ProjectDetail() {
                 message: error.response?.data?.error || 'Error al actualizar el proyecto', 
                 type: 'error' 
             });
+        } finally {
+            setSubmittingUpdate(false);
         }
     };
 
@@ -172,6 +179,8 @@ export default function ProjectDetail() {
 
     const handleAddLink = async (e) => {
         e.preventDefault();
+        if (submittingLink) return;
+        setSubmittingLink(true);
         try {
             await projects.addLink(id, linkForm);
             loadProject();
@@ -179,6 +188,8 @@ export default function ProjectDetail() {
             setLinkForm({ title: '', url: '' });
         } catch (error) {
             console.error('Error adding link:', error);
+        } finally {
+            setSubmittingLink(false);
         }
     };
 
@@ -211,6 +222,8 @@ export default function ProjectDetail() {
 
     const handleShareProject = async (e) => {
         e.preventDefault();
+        if (submittingShare) return;
+        setSubmittingShare(true);
         try {
             await projects.share(id, shareForm.email, shareForm.role);
             setAlertModal({ isOpen: true, title: 'Éxito', message: 'Invitación enviada correctamente', type: 'success' });
@@ -219,6 +232,8 @@ export default function ProjectDetail() {
         } catch (error) {
             console.error('Error sharing project:', error);
             setAlertModal({ isOpen: true, title: 'Error', message: error.response?.data?.error || 'Error al compartir el proyecto', type: 'error' });
+        } finally {
+            setSubmittingShare(false);
         }
     };
 
@@ -754,14 +769,16 @@ export default function ProjectDetail() {
                     <div className="flex gap-3 pt-4">
                         <button
                             type="submit"
-                            className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all"
+                            disabled={submittingUpdate}
+                            className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Actualizar
+                            {submittingUpdate ? 'Actualizando...' : 'Actualizar'}
                         </button>
                         <button
                             type="button"
                             onClick={() => setShowEditModal(false)}
-                            className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white rounded-xl font-medium transition-all"
+                            disabled={submittingUpdate}
+                            className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Cancelar
                         </button>
@@ -795,14 +812,16 @@ export default function ProjectDetail() {
                     <div className="flex gap-3 pt-4">
                         <button
                             type="submit"
-                            className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all"
+                            disabled={submittingLink}
+                            className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Agregar
+                            {submittingLink ? 'Agregando...' : 'Agregar'}
                         </button>
                         <button
                             type="button"
                             onClick={() => setShowLinkModal(false)}
-                            className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white rounded-xl font-medium transition-all"
+                            disabled={submittingLink}
+                            className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Cancelar
                         </button>
@@ -839,14 +858,16 @@ export default function ProjectDetail() {
                     <div className="flex gap-3 pt-4">
                         <button
                             type="submit"
-                            className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-xl font-medium shadow-lg transition-all"
+                            disabled={submittingShare}
+                            className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-xl font-medium shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Enviar Invitación
+                            {submittingShare ? 'Enviando...' : 'Enviar Invitación'}
                         </button>
                         <button
                             type="button"
                             onClick={() => setShowShareModal(false)}
-                            className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white rounded-xl font-medium transition-all"
+                            disabled={submittingShare}
+                            className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Cancelar
                         </button>

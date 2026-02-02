@@ -9,6 +9,8 @@ export default function Repositories() {
   const [repos, setRepos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [creatingGitHub, setCreatingGitHub] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showGitHubModal, setShowGitHubModal] = useState(false);
   const [showCloneInfoModal, setShowCloneInfoModal] = useState(false);
@@ -91,6 +93,8 @@ export default function Repositories() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
     try {
       const data = {
         ...formData,
@@ -107,11 +111,15 @@ export default function Repositories() {
       closeModal();
     } catch (error) {
       console.error('Error saving repo:', error);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleGitHubSubmit = async (e) => {
     e.preventDefault();
+    if (creatingGitHub) return;
+    setCreatingGitHub(true);
     try {
       const response = await repositories.createGitHub(githubFormData);
       setCloneInfo(response.data);
@@ -141,6 +149,8 @@ export default function Repositories() {
       } else {
         setAlertModal({ isOpen: true, title: 'Error', message: errorMessage, type: 'error' });
       }
+    } finally {
+      setCreatingGitHub(false);
     }
   };
 
@@ -431,14 +441,16 @@ export default function Repositories() {
           <div className="flex gap-3 pt-4">
             <button
               type="submit"
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all"
+              disabled={submitting}
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {editingRepo ? 'Update' : 'Create'}
+              {submitting ? 'Guardando...' : (editingRepo ? 'Update' : 'Create')}
             </button>
             <button
               type="button"
               onClick={closeModal}
-              className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white rounded-xl font-medium transition-all"
+              disabled={submitting}
+              className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
@@ -492,14 +504,16 @@ export default function Repositories() {
           <div className="flex gap-3 pt-4">
             <button
               type="submit"
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all"
+              disabled={creatingGitHub}
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Create
+              {creatingGitHub ? 'Creando...' : 'Create'}
             </button>
             <button
               type="button"
               onClick={() => setShowGitHubModal(false)}
-              className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white rounded-xl font-medium transition-all"
+              disabled={creatingGitHub}
+              className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>

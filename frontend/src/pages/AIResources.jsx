@@ -9,6 +9,8 @@ export default function AIResources() {
   const [folderList, setFolderList] = useState([]);
   const [aiList, setAiList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [submittingFolder, setSubmittingFolder] = useState(false);
+  const [submittingAI, setSubmittingAI] = useState(false);
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
   const [editingFolder, setEditingFolder] = useState(null);
@@ -70,6 +72,8 @@ export default function AIResources() {
 
   const handleFolderSubmit = async (e) => {
     e.preventDefault();
+    if (submittingFolder) return;
+    setSubmittingFolder(true);
     try {
       const data = {
         ...folderForm,
@@ -91,11 +95,15 @@ export default function AIResources() {
         message: 'Error al guardar la carpeta: ' + (error.response?.data?.error || error.message), 
         type: 'error' 
       });
+    } finally {
+      setSubmittingFolder(false);
     }
   };
 
   const handleAISubmit = async (e) => {
     e.preventDefault();
+    if (submittingAI) return;
+    setSubmittingAI(true);
     try {
       const data = {
         ...aiForm,
@@ -117,6 +125,8 @@ export default function AIResources() {
         message: 'Error al guardar el recurso IA: ' + (error.response?.data?.error || error.message), 
         type: 'error' 
       });
+    } finally {
+      setSubmittingAI(false);
     }
   };
 
@@ -751,14 +761,16 @@ export default function AIResources() {
           <div className="flex gap-3 pt-4">
             <button
               type="submit"
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all"
+              disabled={submittingFolder}
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {editingFolder ? 'Actualizar' : 'Crear'}
+              {submittingFolder ? 'Guardando...' : (editingFolder ? 'Actualizar' : 'Crear')}
             </button>
             <button
               type="button"
               onClick={closeFolderModal}
-              className="flex-1 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-medium transition-all"
+              disabled={submittingFolder}
+              className="flex-1 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancelar
             </button>
@@ -818,14 +830,16 @@ export default function AIResources() {
           <div className="flex gap-3 pt-4">
             <button
               type="submit"
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all"
+              disabled={submittingAI}
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {editingAI ? 'Actualizar' : 'Crear'}
+              {submittingAI ? 'Guardando...' : (editingAI ? 'Actualizar' : 'Crear')}
             </button>
             <button
               type="button"
               onClick={closeAIModal}
-              className="flex-1 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-medium transition-all"
+              disabled={submittingAI}
+              className="flex-1 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancelar
             </button>
