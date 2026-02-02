@@ -165,10 +165,13 @@ export default function AIResources() {
   };
 
   // Drag and Drop Handlers
-  const handleDragStart = (e, ai) => {
-    e.dataTransfer.setData('aiId', ai.id);
+  const handleDragStart = (e, item, itemType) => {
+    if (itemType === 'folder') {
+      e.dataTransfer.setData('folderId', item.id);
+    } else {
+      e.dataTransfer.setData('aiId', item.id);
+    }
     e.dataTransfer.effectAllowed = 'move';
-    // Opcional: Imagen fantasma personalizada
   };
 
   const handleDragOver = (e, folderId) => {
@@ -187,17 +190,26 @@ export default function AIResources() {
     e.preventDefault();
     setDragTarget(null);
     const aiId = e.dataTransfer.getData('aiId');
-
-    if (!aiId) return;
+    const droppedFolderId = e.dataTransfer.getData('folderId');
 
     try {
-      // Mover recurso a la nueva carpeta
-      await aiResources.update(aiId, { folderId });
+      if (aiId) {
+        // Mover recurso a la nueva carpeta
+        await aiResources.update(aiId, { folderId });
+      } else if (droppedFolderId) {
+        // Evitar mover una carpeta dentro de sí misma
+        if (droppedFolderId === folderId) {
+          setAlertModal({ isOpen: true, title: 'Error', message: 'No puedes mover una carpeta dentro de sí misma', type: 'error' });
+          return;
+        }
+        // Mover carpeta dentro de otra carpeta
+        await folders.update(droppedFolderId, { parentId: folderId });
+      }
 
-      // Actualizar UI optimista o recargar
+      // Actualizar UI
       loadData();
     } catch (error) {
-      console.error('Error moving resource:', error);
+      console.error('Error moving item:', error);
       setAlertModal({ isOpen: true, title: 'Error', message: 'Error al mover el recurso', type: 'error' });
     }
   };
@@ -431,6 +443,8 @@ export default function AIResources() {
             {filteredFolders.map((folder) => (
               <div
                 key={folder.id}
+                draggable="true"
+                onDragStart={(e) => handleDragStart(e, folder, 'folder')}
                 onDoubleClick={() => handleFolderDoubleClick(folder.id)}
                 onContextMenu={(e) => {
                   e.preventDefault();
@@ -440,7 +454,7 @@ export default function AIResources() {
                 onDragOver={(e) => handleDragOver(e, folder.id)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, folder.id)}
-                className={`group relative w-full aspect-[5/4] cursor-pointer perspective-1000 transition-transform ${dragTarget === folder.id ? 'scale-105 z-20' : ''}`}
+                className={`group relative w-full aspect-[5/4] cursor-grab active:cursor-grabbing perspective-1000 transition-transform ${dragTarget === folder.id ? 'scale-105 z-20' : ''}`}
               >
                 {/* Back Plate (Tab) */}
                 <div className={`absolute top-0 left-0 w-[40%] h-full rounded-t-xl border-t border-l border-white/10 transition-colors ${dragTarget === folder.id ? 'bg-amber-500/50' : 'bg-slate-700/50 group-hover:bg-amber-600/30'}`}></div>
@@ -472,7 +486,7 @@ export default function AIResources() {
               <div
                 key={ai.id}
                 draggable="true"
-                onDragStart={(e) => handleDragStart(e, ai)}
+                onDragStart={(e) => handleDragStart(e, ai, 'ai')}
                 onDoubleClick={() => window.open(ai.url, '_blank')}
                 onContextMenu={(e) => {
                   e.preventDefault();
@@ -511,13 +525,18 @@ export default function AIResources() {
                 {filteredFolders.map((folder) => (
                   <tr
                     key={folder.id}
+                    draggable="true"
+                    onDragStart={(e) => handleDragStart(e, folder, 'folder')}
+                    onDragOver={(e) => handleDragOver(e, folder.id)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, folder.id)}
                     onDoubleClick={() => handleFolderDoubleClick(folder.id)}
                     onContextMenu={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       handleContextMenu(e, folder, 'folder');
                     }}
-                    className="border-b border-white/5 hover:bg-white/5 transition-all cursor-pointer"
+                    className="border-b border-white/5 hover:bg-white/5 transition-all cursor-grab active:cursor-grabbing"
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
