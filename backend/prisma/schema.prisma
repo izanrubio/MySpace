@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // Usuario para autenticación privada
@@ -77,6 +78,7 @@ model AIResource {
   id          String   @id @default(uuid())
   name        String
   url         String
+  logoUrl     String? // URL del logo/icono
   type        String // web, local, api
   description String?
   tags        String[] // Array de tags

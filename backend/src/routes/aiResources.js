@@ -59,7 +59,7 @@ router.get('/:id', async (req, res) => {
 // Create AI resource
 router.post('/', async (req, res) => {
   try {
-    const { name, url, type, description, tags, folderId } = req.body;
+    const { name, url, logoUrl, type, description, tags, folderId } = req.body;
 
     // Validate required fields
     if (!name || !url) {
@@ -97,6 +97,7 @@ router.post('/', async (req, res) => {
       data: {
         name,
         url,
+        logoUrl,
         type: resourceType,
         description,
         tags: tags || [],
@@ -117,7 +118,7 @@ router.post('/', async (req, res) => {
 // Update AI resource
 router.put('/:id', async (req, res) => {
   try {
-    const { name, url, type, description, tags, folderId } = req.body;
+    const { name, url, logoUrl, type, description, tags, folderId } = req.body;
 
     const aiResource = await prisma.aIResource.findUnique({
       where: { id: req.params.id },
@@ -132,6 +133,7 @@ router.put('/:id', async (req, res) => {
       data: {
         name,
         url,
+        logoUrl,
         type,
         description,
         tags,
