@@ -35,7 +35,6 @@ export default function AIResources() {
   const [aiForm, setAiForm] = useState({
     name: '',
     url: '',
-    logoUrl: '',
     type: 'web',
     description: '',
     folderId: '',
@@ -255,7 +254,6 @@ export default function AIResources() {
       setAiForm({
         name: ai.name,
         url: ai.url,
-        logoUrl: ai.logoUrl || '',
         type: ai.type || 'web',
         description: ai.description || '',
         folderId: ai.folderId || '',
@@ -495,30 +493,14 @@ export default function AIResources() {
                   e.stopPropagation();
                   handleContextMenu(e, ai, 'ai');
                 }}
-                className="group relative bg-gradient-to-br from-white/5 to-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:from-white/10 hover:to-white/5 hover:border-purple-400/40 hover:shadow-2xl hover:shadow-purple-500/25 transition-all duration-300 cursor-grab active:cursor-grabbing hover:-translate-y-1"
+                className="group relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 hover:bg-white/10 hover:border-purple-500/30 transition-all cursor-grab active:cursor-grabbing"
               >
-                <div className="flex flex-col items-center gap-4">
-                  <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 p-[3px] shadow-lg group-hover:shadow-purple-500/60 group-hover:scale-110 transition-all duration-300">
-                    <div className="w-full h-full rounded-2xl bg-slate-900/95 flex items-center justify-center overflow-hidden">
-                      {ai.logoUrl ? (
-                        <img 
-                          src={ai.logoUrl} 
-                          alt={ai.name}
-                          className="w-14 h-14 object-contain p-1"
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                            e.target.nextSibling.style.display = 'block';
-                          }}
-                        />
-                      ) : null}
-                      <FiCpu className="text-white" size={40} style={{ display: ai.logoUrl ? 'none' : 'block' }} />
-                    </div>
+                <div className="flex flex-col items-center gap-2">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg">
+                    <FiCpu className="text-white" size={28} />
                   </div>
-                  <div className="text-center w-full space-y-1">
-                    <p className="text-base font-bold text-white truncate group-hover:text-purple-300 transition-colors">{ai.name}</p>
-                    {ai.description && (
-                      <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{ai.description}</p>
-                    )}
+                  <div className="text-center w-full">
+                    <p className="text-sm font-medium text-white truncate">{ai.name}</p>
                   </div>
                 </div>
               </div>
@@ -613,21 +595,8 @@ export default function AIResources() {
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="relative w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 p-[2px]">
-                          <div className="w-full h-full rounded-lg bg-slate-900/90 flex items-center justify-center overflow-hidden">
-                            {ai.logoUrl ? (
-                              <img 
-                                src={ai.logoUrl} 
-                                alt={ai.name}
-                                className="w-7 h-7 object-contain"
-                                onError={(e) => {
-                                  e.target.style.display = 'none';
-                                  e.target.nextSibling.style.display = 'block';
-                                }}
-                              />
-                            ) : null}
-                            <FiCpu className="text-white" size={18} style={{ display: ai.logoUrl ? 'none' : 'block' }} />
-                          </div>
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
+                          <FiCpu className="text-white" size={18} />
                         </div>
                         <span className="text-sm text-slate-400">Recurso IA</span>
                       </div>
@@ -851,32 +820,6 @@ export default function AIResources() {
               className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all"
               required
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Logo URL (opcional)</label>
-            <input
-              type="url"
-              value={aiForm.logoUrl}
-              onChange={(e) => setAiForm({ ...aiForm, logoUrl: e.target.value })}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all"
-              placeholder="https://ejemplo.com/logo.png"
-            />
-            {aiForm.logoUrl && (
-              <div className="mt-2 flex items-center gap-2 text-xs text-slate-400">
-                <span>Vista previa:</span>
-                <img 
-                  src={aiForm.logoUrl} 
-                  alt="Logo preview" 
-                  className="w-8 h-8 rounded object-contain bg-slate-800 p-1"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.nextSibling.style.display = 'inline';
-                  }}
-                />
-                <span style={{ display: 'none' }} className="text-red-400">❌ Error al cargar imagen</span>
-              </div>
-            )}
           </div>
 
           <div>
