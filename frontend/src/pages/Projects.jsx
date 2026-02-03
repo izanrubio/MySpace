@@ -26,6 +26,8 @@ export default function Projects() {
   const [repoList, setRepoList] = useState([]);
   const [aiList, setAiList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [submittingLink, setSubmittingLink] = useState(false);
 
   // States for Modals
   const [showProjectModal, setShowProjectModal] = useState(false);
@@ -69,6 +71,8 @@ export default function Projects() {
 
   const handleProjectSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
     try {
       if (editingProject) {
         await projects.update(editingProject.id, projectForm);
@@ -79,6 +83,8 @@ export default function Projects() {
       closeProjectModal();
     } catch (error) {
       console.error('Error saving project:', error);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -221,22 +227,6 @@ export default function Projects() {
                 <div className="p-2 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 shadow-lg">
                   <FiFolder className="text-white" size={20} />
                 </div>
-                {project.user && project.user.id === user?.id && (
-                  <select
-                    value={project.status || 'activo'}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      handleStatusChange(project.id, e.target.value);
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="px-2 py-1 text-xs font-medium bg-white/5 border border-white/10 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-purple-500 cursor-pointer"
-                  >
-                    <option value="activo">Activo</option>
-                    <option value="pausado">Pausado</option>
-                    <option value="completado">Completado</option>
-                    <option value="archivado">Archivado</option>
-                  </select>
-                )}
               </div>
 
               <div className="flex items-center gap-2 mb-2">
@@ -343,14 +333,16 @@ export default function Projects() {
           <div className="flex gap-3 pt-4">
             <button
               type="submit"
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all"
+              disabled={submitting}
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {editingProject ? 'Update' : 'Create'}
+              {submitting ? 'Guardando...' : (editingProject ? 'Update' : 'Create')}
             </button>
             <button
               type="button"
               onClick={closeProjectModal}
-              className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white rounded-xl font-medium transition-all"
+              disabled={submitting}
+              className="flex-1 px-6 py-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>

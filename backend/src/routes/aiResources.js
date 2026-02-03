@@ -59,7 +59,7 @@ router.get('/:id', async (req, res) => {
 // Create AI resource
 router.post('/', async (req, res) => {
   try {
-    const { name, url, type, description, tags, folderId } = req.body;
+    const { name, url, logoUrl, type, description, tags, folderId } = req.body;
 
     // Validate required fields
     if (!name || !url) {
@@ -97,6 +97,7 @@ router.post('/', async (req, res) => {
       data: {
         name,
         url,
+        logoUrl,
         type: resourceType,
         description,
         tags: tags || [],
@@ -117,7 +118,7 @@ router.post('/', async (req, res) => {
 // Update AI resource
 router.put('/:id', async (req, res) => {
   try {
-    const { name, url, type, description, tags, folderId } = req.body;
+    const { name, url, logoUrl, type, description, tags, folderId } = req.body;
 
     const aiResource = await prisma.aIResource.findUnique({
       where: { id: req.params.id },
@@ -127,15 +128,30 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'AI resource not found' });
     }
 
+    // Verify folder belongs to user if folderId is provided
+    if (folderId) {
+      const folder = await prisma.folder.findFirst({
+        where: {
+          id: folderId,
+          userId: req.userId,
+        },
+      });
+
+      if (!folder) {
+        return res.status(404).json({ error: 'Folder not found' });
+      }
+    }
+
     const updated = await prisma.aIResource.update({
       where: { id: req.params.id },
       data: {
-        name,
-        url,
-        type,
-        description,
-        tags,
-        folderId,
+        ...(name !== undefined && { name }),
+        ...(url !== undefined && { url }),
+        ...(logoUrl !== undefined && { logoUrl }),
+        ...(type !== undefined && { type }),
+        ...(description !== undefined && { description }),
+        ...(tags !== undefined && { tags }),
+        ...(folderId !== undefined && { folderId }),
       },
       include: {
         folder: true,
@@ -144,7 +160,8 @@ router.put('/:id', async (req, res) => {
 
     res.json(updated);
   } catch (error) {
-    res.status(500).json({ error: 'Error updating AI resource' });
+    console.error('Error updating AI resource:', error);
+    res.status(500).json({ error: 'Error updating AI resource: ' + error.message });
   }
 });
 

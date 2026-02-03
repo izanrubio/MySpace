@@ -9,6 +9,8 @@ export default function AIResources() {
   const [folderList, setFolderList] = useState([]);
   const [aiList, setAiList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [submittingFolder, setSubmittingFolder] = useState(false);
+  const [submittingAI, setSubmittingAI] = useState(false);
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
   const [editingFolder, setEditingFolder] = useState(null);
@@ -33,6 +35,7 @@ export default function AIResources() {
   const [aiForm, setAiForm] = useState({
     name: '',
     url: '',
+    logoUrl: '',
     type: 'web',
     description: '',
     folderId: '',
@@ -70,6 +73,8 @@ export default function AIResources() {
 
   const handleFolderSubmit = async (e) => {
     e.preventDefault();
+    if (submittingFolder) return;
+    setSubmittingFolder(true);
     try {
       const data = {
         ...folderForm,
@@ -91,14 +96,23 @@ export default function AIResources() {
         message: 'Error al guardar la carpeta: ' + (error.response?.data?.error || error.message), 
         type: 'error' 
       });
+    } finally {
+      setSubmittingFolder(false);
     }
   };
 
   const handleAISubmit = async (e) => {
     e.preventDefault();
+    if (submittingAI) return;
+    setSubmittingAI(true);
     try {
       const data = {
-        ...aiForm,
+        name: aiForm.name,
+        url: aiForm.url,
+        logoUrl: aiForm.logoUrl || null,
+        type: aiForm.type || 'web',
+        description: aiForm.description || '',
+        tags: aiForm.tags || [],
         folderId: aiForm.folderId || currentFolderId || null,
       };
 
@@ -117,6 +131,8 @@ export default function AIResources() {
         message: 'Error al guardar el recurso IA: ' + (error.response?.data?.error || error.message), 
         type: 'error' 
       });
+    } finally {
+      setSubmittingAI(false);
     }
   };
 
@@ -155,10 +171,13 @@ export default function AIResources() {
   };
 
   // Drag and Drop Handlers
-  const handleDragStart = (e, ai) => {
-    e.dataTransfer.setData('aiId', ai.id);
+  const handleDragStart = (e, item, itemType) => {
+    if (itemType === 'folder') {
+      e.dataTransfer.setData('folderId', item.id);
+    } else {
+      e.dataTransfer.setData('aiId', item.id);
+    }
     e.dataTransfer.effectAllowed = 'move';
-    // Opcional: Imagen fantasma personalizada
   };
 
   const handleDragOver = (e, folderId) => {
@@ -177,17 +196,26 @@ export default function AIResources() {
     e.preventDefault();
     setDragTarget(null);
     const aiId = e.dataTransfer.getData('aiId');
-
-    if (!aiId) return;
+    const droppedFolderId = e.dataTransfer.getData('folderId');
 
     try {
-      // Mover recurso a la nueva carpeta
-      await aiResources.update(aiId, { folderId });
+      if (aiId) {
+        // Mover recurso a la nueva carpeta
+        await aiResources.update(aiId, { folderId });
+      } else if (droppedFolderId) {
+        // Evitar mover una carpeta dentro de sí misma
+        if (droppedFolderId === folderId) {
+          setAlertModal({ isOpen: true, title: 'Error', message: 'No puedes mover una carpeta dentro de sí misma', type: 'error' });
+          return;
+        }
+        // Mover carpeta dentro de otra carpeta
+        await folders.update(droppedFolderId, { parentId: folderId });
+      }
 
-      // Actualizar UI optimista o recargar
+      // Actualizar UI
       loadData();
     } catch (error) {
-      console.error('Error moving resource:', error);
+      console.error('Error moving item:', error);
       setAlertModal({ isOpen: true, title: 'Error', message: 'Error al mover el recurso', type: 'error' });
     }
   };
@@ -232,6 +260,7 @@ export default function AIResources() {
       setAiForm({
         name: ai.name,
         url: ai.url,
+        logoUrl: ai.logoUrl || '',
         type: ai.type || 'web',
         description: ai.description || '',
         folderId: ai.folderId || '',
@@ -421,6 +450,8 @@ export default function AIResources() {
             {filteredFolders.map((folder) => (
               <div
                 key={folder.id}
+                draggable="true"
+                onDragStart={(e) => handleDragStart(e, folder, 'folder')}
                 onDoubleClick={() => handleFolderDoubleClick(folder.id)}
                 onContextMenu={(e) => {
                   e.preventDefault();
@@ -430,7 +461,7 @@ export default function AIResources() {
                 onDragOver={(e) => handleDragOver(e, folder.id)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, folder.id)}
-                className={`group relative w-full aspect-[5/4] cursor-pointer perspective-1000 transition-transform ${dragTarget === folder.id ? 'scale-105 z-20' : ''}`}
+                className={`group relative w-full aspect-[5/4] cursor-grab active:cursor-grabbing perspective-1000 transition-transform ${dragTarget === folder.id ? 'scale-105 z-20' : ''}`}
               >
                 {/* Back Plate (Tab) */}
                 <div className={`absolute top-0 left-0 w-[40%] h-full rounded-t-xl border-t border-l border-white/10 transition-colors ${dragTarget === folder.id ? 'bg-amber-500/50' : 'bg-slate-700/50 group-hover:bg-amber-600/30'}`}></div>
@@ -462,21 +493,37 @@ export default function AIResources() {
               <div
                 key={ai.id}
                 draggable="true"
-                onDragStart={(e) => handleDragStart(e, ai)}
+                onDragStart={(e) => handleDragStart(e, ai, 'ai')}
                 onDoubleClick={() => window.open(ai.url, '_blank')}
                 onContextMenu={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   handleContextMenu(e, ai, 'ai');
                 }}
-                className="group relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 hover:bg-white/10 hover:border-purple-500/30 transition-all cursor-grab active:cursor-grabbing"
+                className="group relative bg-gradient-to-br from-white/5 to-white/[0.02] backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:from-white/10 hover:to-white/5 hover:border-purple-400/40 hover:shadow-2xl hover:shadow-purple-500/25 transition-all duration-300 cursor-grab active:cursor-grabbing hover:-translate-y-1"
               >
-                <div className="flex flex-col items-center gap-2">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg">
-                    <FiCpu className="text-white" size={28} />
+                <div className="flex flex-col items-center gap-4">
+                  <div className="relative w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500 via-pink-500 to-purple-600 p-[3px] shadow-lg group-hover:shadow-purple-500/60 group-hover:scale-110 transition-all duration-300">
+                    <div className="w-full h-full rounded-2xl bg-slate-900/95 flex items-center justify-center overflow-hidden">
+                      {ai.logoUrl ? (
+                        <img 
+                          src={ai.logoUrl} 
+                          alt={ai.name}
+                          className="w-14 h-14 object-contain p-1"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'block';
+                          }}
+                        />
+                      ) : null}
+                      <FiCpu className="text-white" size={40} style={{ display: ai.logoUrl ? 'none' : 'block' }} />
+                    </div>
                   </div>
-                  <div className="text-center w-full">
-                    <p className="text-sm font-medium text-white truncate">{ai.name}</p>
+                  <div className="text-center w-full space-y-1">
+                    <p className="text-base font-bold text-white truncate group-hover:text-purple-300 transition-colors">{ai.name}</p>
+                    {ai.description && (
+                      <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{ai.description}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -501,13 +548,18 @@ export default function AIResources() {
                 {filteredFolders.map((folder) => (
                   <tr
                     key={folder.id}
+                    draggable="true"
+                    onDragStart={(e) => handleDragStart(e, folder, 'folder')}
+                    onDragOver={(e) => handleDragOver(e, folder.id)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, folder.id)}
                     onDoubleClick={() => handleFolderDoubleClick(folder.id)}
                     onContextMenu={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       handleContextMenu(e, folder, 'folder');
                     }}
-                    className="border-b border-white/5 hover:bg-white/5 transition-all cursor-pointer"
+                    className="border-b border-white/5 hover:bg-white/5 transition-all cursor-grab active:cursor-grabbing"
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -566,8 +618,21 @@ export default function AIResources() {
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
-                          <FiCpu className="text-white" size={18} />
+                        <div className="relative w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 p-[2px]">
+                          <div className="w-full h-full rounded-lg bg-slate-900/90 flex items-center justify-center overflow-hidden">
+                            {ai.logoUrl ? (
+                              <img 
+                                src={ai.logoUrl} 
+                                alt={ai.name}
+                                className="w-7 h-7 object-contain"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  e.target.nextSibling.style.display = 'block';
+                                }}
+                              />
+                            ) : null}
+                            <FiCpu className="text-white" size={18} style={{ display: ai.logoUrl ? 'none' : 'block' }} />
+                          </div>
                         </div>
                         <span className="text-sm text-slate-400">Recurso IA</span>
                       </div>
@@ -751,14 +816,16 @@ export default function AIResources() {
           <div className="flex gap-3 pt-4">
             <button
               type="submit"
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all"
+              disabled={submittingFolder}
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {editingFolder ? 'Actualizar' : 'Crear'}
+              {submittingFolder ? 'Guardando...' : (editingFolder ? 'Actualizar' : 'Crear')}
             </button>
             <button
               type="button"
               onClick={closeFolderModal}
-              className="flex-1 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-medium transition-all"
+              disabled={submittingFolder}
+              className="flex-1 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancelar
             </button>
@@ -792,6 +859,32 @@ export default function AIResources() {
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Logo URL (opcional)</label>
+            <input
+              type="url"
+              value={aiForm.logoUrl}
+              onChange={(e) => setAiForm({ ...aiForm, logoUrl: e.target.value })}
+              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all"
+              placeholder="https://ejemplo.com/logo.png"
+            />
+            {aiForm.logoUrl && (
+              <div className="mt-2 flex items-center gap-2 text-xs text-slate-400">
+                <span>Vista previa:</span>
+                <img 
+                  src={aiForm.logoUrl} 
+                  alt="Logo preview" 
+                  className="w-8 h-8 rounded object-contain bg-slate-800 p-1"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'inline';
+                  }}
+                />
+                <span style={{ display: 'none' }} className="text-red-400">❌ Error al cargar imagen</span>
+              </div>
+            )}
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">Carpeta</label>
             <select
               value={aiForm.folderId}
@@ -818,14 +911,16 @@ export default function AIResources() {
           <div className="flex gap-3 pt-4">
             <button
               type="submit"
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all"
+              disabled={submittingAI}
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {editingAI ? 'Actualizar' : 'Crear'}
+              {submittingAI ? 'Guardando...' : (editingAI ? 'Actualizar' : 'Crear')}
             </button>
             <button
               type="button"
               onClick={closeAIModal}
-              className="flex-1 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-medium transition-all"
+              disabled={submittingAI}
+              className="flex-1 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancelar
             </button>

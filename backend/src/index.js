@@ -17,14 +17,13 @@ import projectRoutes from './routes/projects.js';
 import searchRoutes from './routes/search.js';
 import languageRoutes from './routes/languages.js';
 import notificationRoutes from './routes/notifications.js';
-
-// ✅ Ruta de test de base de datos
 import dbTestRoutes from './routes/dbTest.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+/* -------------------- MIDDLEWARE -------------------- */
+
 app.use(
   cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',
@@ -34,11 +33,10 @@ app.use(
 
 app.use(express.json());
 
-// Session
 app.use(
   session({
     name: 'myspace.sid',
-    secret: process.env.SESSION_SECRET || 'myspace-secret-key-change-in-production',
+    secret: process.env.SESSION_SECRET || 'myspace-secret-dev',
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -50,22 +48,22 @@ app.use(
   })
 );
 
-// Passport
+/* -------------------- PASSPORT -------------------- */
+
 app.use(passport.initialize());
 app.use(passport.session());
 app.set('passport', passport);
 
-// Root
-app.get('/', (req, res) => {
+/* -------------------- ROUTES -------------------- */
+
+app.get('/', (_, res) => {
   res.send('Welcome to MySpace API! Go to /health to check status.');
 });
 
-// Health
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', message: 'MySpace API is running' });
+app.get('/health', (_, res) => {
+  res.json({ ok: true, env: process.env.NODE_ENV });
 });
 
-// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/repositories', repoRoutes);
 app.use('/api/ai-resources', aiRoutes);
@@ -75,14 +73,15 @@ app.use('/api/search', searchRoutes);
 app.use('/api/languages', languageRoutes);
 app.use('/api/notifications', notificationRoutes);
 
-// ✅ DB TEST (MUY IMPORTANTE)
+// DB test
 app.use('/api', dbTestRoutes);
 
-// Solo escuchar en desarrollo local (no en Vercel)
-if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+/// Escuchar solo en local (Vercel NO usa app.listen)
+if (!process.env.VERCEL) {
   app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`🚀 MySpace API running locally on http://localhost:${PORT}`);
   });
 }
 
 export default app;
+
