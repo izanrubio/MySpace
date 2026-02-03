@@ -20,6 +20,7 @@ export const auth = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
   getMe: () => api.get('/auth/me'),
+  syncGitHub: () => api.post('/auth/github/sync'),
 };
 
 // Repositories

@@ -78,9 +78,11 @@ app.use('/api/notifications', notificationRoutes);
 // ✅ DB TEST (MUY IMPORTANTE)
 app.use('/api', dbTestRoutes);
 
-// ❗ En Vercel NO se hace listen
-// app.listen(PORT, () => {
-//   console.log(`🚀 Server running on http://localhost:${PORT}`);
-// });
+// Solo escuchar en desarrollo local (no en Vercel)
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+  });
+}
 
 export default app;

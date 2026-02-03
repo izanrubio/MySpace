@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { FiPlus, FiEdit2, FiTrash2, FiExternalLink, FiGitBranch, FiLock, FiGlobe, FiCode, FiSearch, FiStar } from 'react-icons/fi';
-import { repositories } from '../services/api';
+import { FiPlus, FiEdit2, FiTrash2, FiExternalLink, FiGitBranch, FiLock, FiGlobe, FiCode, FiSearch, FiStar, FiRefreshCw } from 'react-icons/fi';
+import { repositories, auth } from '../services/api';
 import Modal from '../components/Modal';
 import AlertModal from '../components/AlertModal';
 import ConfirmModal from '../components/ConfirmModal';
@@ -8,6 +8,7 @@ import ConfirmModal from '../components/ConfirmModal';
 export default function Repositories() {
   const [repos, setRepos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [showGitHubModal, setShowGitHubModal] = useState(false);
   const [showCloneInfoModal, setShowCloneInfoModal] = useState(false);
@@ -45,6 +46,47 @@ export default function Repositories() {
       console.error('Error loading repos:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSyncGitHub = async () => {
+    setSyncing(true);
+    try {
+      const response = await auth.syncGitHub();
+      await loadRepos();
+      
+      const { newReposCount, totalRepos } = response.data;
+      setAlertModal({
+        isOpen: true,
+        title: 'Sincronización completada',
+        message: `Se encontraron ${totalRepos} repositorios en GitHub. ${newReposCount > 0 ? `Se agregaron ${newReposCount} nuevos repositorios.` : 'No hay nuevos repositorios.'}`,
+        type: 'success'
+      });
+    } catch (error) {
+      console.error('Error syncing GitHub repos:', error);
+      const errorMessage = error.response?.data?.error || 'Error al sincronizar repositorios';
+      
+      if (error.response?.status === 400 && errorMessage.includes('not connected')) {
+        setConfirmModal({
+          isOpen: true,
+          title: 'GitHub no conectado',
+          message: '¿Quieres conectar tu cuenta de GitHub para sincronizar tus repositorios?',
+          confirmText: 'Conectar',
+          cancelText: 'Cancelar',
+          onConfirm: () => {
+            window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/auth/github`;
+          }
+        });
+      } else {
+        setAlertModal({
+          isOpen: true,
+          title: 'Error',
+          message: errorMessage,
+          type: 'error'
+        });
+      }
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -215,13 +257,24 @@ export default function Repositories() {
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Repositories</h1>
           <p className="text-slate-600 dark:text-slate-400">Manage your code repositories and projects</p>
         </div>
-        <button
-          onClick={() => setShowGitHubModal(true)}
-          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg shadow-purple-500/50 hover:shadow-purple-500/70 transition-all"
-        >
-          <FiPlus size={20} />
-          New Repository
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={handleSyncGitHub}
+            disabled={syncing}
+            className="flex items-center gap-2 px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Sync repositories from GitHub"
+          >
+            <FiRefreshCw size={20} className={syncing ? 'animate-spin' : ''} />
+            {syncing ? 'Syncing...' : 'Sync GitHub'}
+          </button>
+          <button
+            onClick={() => setShowGitHubModal(true)}
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-medium shadow-lg shadow-purple-500/50 hover:shadow-purple-500/70 transition-all"
+          >
+            <FiPlus size={20} />
+            New Repository
+          </button>
+        </div>
       </div>
 
       {/* Search */}

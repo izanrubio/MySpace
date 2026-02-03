@@ -160,9 +160,42 @@ router.get('/github/callback', (req, res, next) => {
   })(req, res, next);
 });
 
+// Sync GitHub repositories manually
+router.post('/github/sync', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (!user.githubAccessToken) {
+      return res.status(400).json({ error: 'GitHub account not connected' });
+    }
+
+    const syncResult = await syncGitHubRepositories(user);
+    res.json({ 
+      message: 'Repositories synced successfully', 
+      newReposCount: syncResult.newReposCount,
+      totalRepos: syncResult.totalRepos
+    });
+  } catch (error) {
+    console.error('Error syncing repos:', error);
+    res.status(500).json({ error: 'Error syncing repositories' });
+  }
+});
+
 // Helper function to sync GitHub repositories
 async function syncGitHubRepositories(user) {
-  if (!user.githubAccessToken) return;
+  if (!user.githubAccessToken) return { newReposCount: 0, totalRepos: 0 };
 
   try {
     console.log(`🔄 Starting GitHub repo sync for ${user.email}...`);
@@ -208,8 +241,10 @@ async function syncGitHubRepositories(user) {
     }
 
     console.log(`✅ Synced ${newReposCount} new repositories from GitHub`);
+    return { newReposCount, totalRepos: repos.length };
   } catch (error) {
     console.error('❌ Error syncing GitHub repositories:', error);
+    throw error;
   }
 }
 
