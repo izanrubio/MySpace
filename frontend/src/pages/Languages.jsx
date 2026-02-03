@@ -22,6 +22,8 @@ export default function Languages() {
         image: '',
         projectIds: [],
     });
+    
+    const [selectedProjectId, setSelectedProjectId] = useState('');
 
     const CATEGORIES = [
         'Frontend',
@@ -112,6 +114,7 @@ export default function Languages() {
                 projectIds: [],
             });
         }
+        setSelectedProjectId('');
         setShowModal(true);
     };
 
@@ -120,15 +123,21 @@ export default function Languages() {
         setEditingLanguage(null);
     };
 
-    const handleProjectChange = (e) => {
-        const options = e.target.options;
-        const selectedIds = [];
-        for (let i = 0; i < options.length; i++) {
-            if (options[i].selected) {
-                selectedIds.push(options[i].value);
-            }
+    const handleAddProject = () => {
+        if (selectedProjectId && !languageForm.projectIds.includes(selectedProjectId)) {
+            setLanguageForm({ 
+                ...languageForm, 
+                projectIds: [...languageForm.projectIds, selectedProjectId] 
+            });
+            setSelectedProjectId('');
         }
-        setLanguageForm({ ...languageForm, projectIds: selectedIds });
+    };
+    
+    const handleRemoveProject = (projectId) => {
+        setLanguageForm({
+            ...languageForm,
+            projectIds: languageForm.projectIds.filter(id => id !== projectId)
+        });
     };
 
     const filteredLanguages = languageList.filter(lang =>
@@ -315,21 +324,55 @@ export default function Languages() {
                         <label className="block text-sm font-medium text-slate-300 mb-2">
                             Used in Projects
                         </label>
-                        <select
-                            multiple
-                            value={languageForm.projectIds}
-                            onChange={handleProjectChange}
-                            className="w-full px-4 py-2.5 bg-gray-800 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 h-32"
-                        >
-                            {projectList.map(project => (
-                                <option key={project.id} value={project.id}>
-                                    {project.name}
-                                </option>
-                            ))}
-                        </select>
-                        <p className="text-xs text-slate-400 mt-2">
-                            Hold Ctrl (Windows) or Cmd (Mac) to select multiple projects.
-                        </p>
+                        <div className="flex gap-2">
+                            <select
+                                value={selectedProjectId}
+                                onChange={(e) => setSelectedProjectId(e.target.value)}
+                                className="flex-1 px-4 py-2.5 bg-gray-800 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all appearance-none"
+                            >
+                                <option value="">Select a project...</option>
+                                {projectList
+                                    .filter(project => !languageForm.projectIds.includes(project.id))
+                                    .map(project => (
+                                        <option key={project.id} value={project.id}>
+                                            {project.name}
+                                        </option>
+                                    ))}
+                            </select>
+                            <button
+                                type="button"
+                                onClick={handleAddProject}
+                                disabled={!selectedProjectId}
+                                className="px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-medium transition-all border-none disabled:opacity-50 disabled:cursor-not-allowed"
+                                style={{ border: 'none' }}
+                            >
+                                Add
+                            </button>
+                        </div>
+                        
+                        {languageForm.projectIds.length > 0 && (
+                            <div className="mt-3 space-y-2 max-h-32 overflow-y-auto">
+                                {languageForm.projectIds.map(projectId => {
+                                    const project = projectList.find(p => p.id === projectId);
+                                    return project ? (
+                                        <div
+                                            key={projectId}
+                                            className="flex items-center justify-between px-3 py-2 bg-white/5 border border-white/10 rounded-lg"
+                                        >
+                                            <span className="text-sm text-white">{project.name}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveProject(projectId)}
+                                                className="text-red-400 hover:text-red-300 transition-colors"
+                                                style={{ border: 'none', background: 'none' }}
+                                            >
+                                                <FiTrash2 size={16} />
+                                            </button>
+                                        </div>
+                                    ) : null;
+                                })}
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex gap-3 pt-4">
