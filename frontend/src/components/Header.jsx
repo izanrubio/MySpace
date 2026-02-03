@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FiSearch, FiUser, FiSun, FiMoon, FiGithub } from 'react-icons/fi';
+import { FiSearch, FiUser, FiGithub } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { search } from '../services/api';
@@ -7,7 +7,7 @@ import NotificationBell from './NotificationBell';
 
 export default function Header() {
   const { user } = useAuth();
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState(null);
   const [showResults, setShowResults] = useState(false);
@@ -123,19 +123,6 @@ export default function Header() {
 
       {/* Right Side */}
       <div className="flex items-center gap-3">
-        {/* Theme Toggle */}
-        <button
-          onClick={toggleTheme}
-          className={`p-3 rounded-xl ${isDark ? 'bg-white/5 hover:bg-white/10 border-white/10' : 'bg-gray-100 hover:bg-gray-200 border-gray-200'} border transition-all`}
-          title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-          {isDark ? (
-            <FiSun className="text-yellow-400" size={18} />
-          ) : (
-            <FiMoon className="text-blue-600" size={18} />
-          )}
-        </button>
-
         {/* Notifications */}
         <NotificationBell />
 
