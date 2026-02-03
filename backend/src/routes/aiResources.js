@@ -128,16 +128,30 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'AI resource not found' });
     }
 
+    // Verify folder belongs to user if folderId is provided
+    if (folderId) {
+      const folder = await prisma.folder.findFirst({
+        where: {
+          id: folderId,
+          userId: req.userId,
+        },
+      });
+
+      if (!folder) {
+        return res.status(404).json({ error: 'Folder not found' });
+      }
+    }
+
     const updated = await prisma.aIResource.update({
       where: { id: req.params.id },
       data: {
-        name,
-        url,
-        logoUrl,
-        type,
-        description,
-        tags,
-        folderId,
+        ...(name !== undefined && { name }),
+        ...(url !== undefined && { url }),
+        ...(logoUrl !== undefined && { logoUrl }),
+        ...(type !== undefined && { type }),
+        ...(description !== undefined && { description }),
+        ...(tags !== undefined && { tags }),
+        ...(folderId !== undefined && { folderId }),
       },
       include: {
         folder: true,
@@ -146,7 +160,8 @@ router.put('/:id', async (req, res) => {
 
     res.json(updated);
   } catch (error) {
-    res.status(500).json({ error: 'Error updating AI resource' });
+    console.error('Error updating AI resource:', error);
+    res.status(500).json({ error: 'Error updating AI resource: ' + error.message });
   }
 });
 
